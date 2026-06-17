@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   THEME TOKENS
+   Three presets per PRD §5. Every component reads from these
+   CSS variables, so switching data-theme recolors the app.
+   ============================================================ */
+
+:root,
+[data-theme='dark'] {
+  --bg: #0b0b0f;
+  --surface: #16161d;
+  --surface-2: #1f1f29;
+  --border: #2a2a36;
+  --text: #f4f4f7;
+  --muted: #8a8a99;
+  --accent: #8b5cf6;
+  --accent-soft: rgba(139, 92, 246, 0.16);
+  --success: #34d399;
+  --danger: #f87171;
+  color-scheme: dark;
+}
+
+[data-theme='light'] {
+  --bg: #f4f6fb;
+  --surface: #ffffff;
+  --surface-2: #eef1f7;
+  --border: #e1e5ee;
+  --text: #14161c;
+  --muted: #6b7280;
+  --accent: #2563eb;
+  --accent-soft: rgba(37, 99, 235, 0.12);
+  --success: #10b981;
+  --danger: #ef4444;
+  color-scheme: light;
+}
+
+[data-theme='minimal'] {
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f5f7f5;
+  --border: #e6ebe6;
+  --text: #1a1f1a;
+  --muted: #7b857b;
+  --accent: #16a34a;
+  --accent-soft: rgba(22, 163, 74, 0.12);
+  --success: #16a34a;
+  --danger: #dc2626;
+  color-scheme: light;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+/* Prevent iOS zoom on input focus: inputs must be >=16px */
+input,
+select,
+textarea,
+button {
+  font-size: 16px;
+  font-family: inherit;
+}
+
+/* Safe-area helpers for iPhone notch + home indicator */
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@layer components {
+  .card {
+    @apply bg-surface border border-border rounded-card;
+  }
+  .tap {
+    @apply active:opacity-70 transition-opacity;
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .input-stepper {
+    @apply bg-surface-2 border border-border rounded-pill text-text;
+  }
+}
+
+/* Hide scrollbars on horizontal strips */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
