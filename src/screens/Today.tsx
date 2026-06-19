@@ -6,6 +6,7 @@ import ProgressRing from '../components/ProgressRing'
 import ExerciseCard from '../components/ExerciseCard'
 import Segmented from '../components/Segmented'
 import ProgressionSummary from '../components/ProgressionSummary'
+import RestTimer from '../components/RestTimer'
 import {
   useExerciseMap,
   useRoutines,
@@ -41,6 +42,8 @@ export default function Today() {
   const [tab, setTab] = useState<'today' | 'history'>('today')
   const [elapsed, setElapsed] = useState(0)
   const [suggestions, setSuggestions] = useState<ProgressionSuggestion[] | null>(null)
+  const [summaryOpen, setSummaryOpen] = useState(false)
+  const [restSecs, setRestSecs] = useState<number | null>(null)
 
   // Resolve today's routine: explicit override wins over the weekly schedule.
   const routineId = useMemo(() => {
@@ -82,14 +85,19 @@ export default function Today() {
     if (!routine) return
     const s = await ensureSession(routine)
     const logs = s.setLogs.filter((l) => l.routineExerciseId === routineExerciseId)
-    const allDone = logs.every((l) => l.completed) && logs.length >= targetSets
+    const wasAllDone = logs.every((l) => l.completed) && logs.length >= targetSets
     let cur: WorkoutSession | undefined = s
     for (const l of logs) {
-      if (allDone === l.completed) {
+      if (wasAllDone === l.completed) {
         cur = await toggleSet(s.id, l.id)
       }
     }
     void cur
+    // Auto-start the rest timer when an exercise is just checked complete.
+    if (!wasAllDone && settings?.autoRest !== false) {
+      const rex = routine.exercises.find((e) => e.id === routineExerciseId)
+      setRestSecs(rex?.restSeconds || settings?.defaultRestSeconds || 90)
+    }
   }
 
   // Once a session exists its set logs are the source of truth (they reflect any
@@ -107,8 +115,10 @@ export default function Today() {
 
   const onComplete = async () => {
     if (!session) return
+    setRestSecs(null)
     const { suggestions: sug } = await completeSession(session.id)
     setSuggestions(sug)
+    setSummaryOpen(true)
   }
 
   // ---------- HISTORY ----------
@@ -291,23 +301,19 @@ export default function Today() {
             )
           })}
         </div>
-      </Screen>
 
-      {/* pinned Complete button */}
-      {!isCompleted && (
+        {/* Sticky finish bar — stays above the tab bar, scrolls with content */}
         <div
-          className="pb-safe"
           style={{
-            position: 'fixed',
-            left: 0,
-            right: 0,
-            bottom: 64,
-            padding: '10px 16px',
-            background: 'linear-gradient(to top, var(--bg) 60%, transparent)',
-            zIndex: 35,
+            position: 'sticky',
+            bottom: 0,
+            marginTop: 16,
+            paddingTop: 10,
+            paddingBottom: 6,
+            background: 'linear-gradient(to top, var(--bg) 72%, transparent)',
           }}
         >
-          <div style={{ maxWidth: 600, margin: '0 auto' }}>
+          {!isCompleted ? (
             <button
               onClick={onComplete}
               className="tap"
@@ -317,7 +323,7 @@ export default function Today() {
                 height: 52,
                 borderRadius: 14,
                 border: 'none',
-                background: allDone ? 'var(--accent)' : doneSets === 0 ? 'var(--surface-2)' : 'var(--accent)',
+                background: doneSets === 0 ? 'var(--surface-2)' : 'var(--accent)',
                 color: doneSets === 0 ? 'var(--muted)' : '#fff',
                 fontWeight: 800,
                 fontSize: 16,
@@ -326,38 +332,49 @@ export default function Today() {
             >
               {allDone ? 'Finish Workout 💪' : `Complete Workout (${doneSets}/${totalSets})`}
             </button>
-          </div>
+          ) : (
+            <div
+              className="card"
+              style={{ padding: 14, borderColor: 'var(--success)', display: 'flex', alignItems: 'center', gap: 12 }}
+            >
+              <div style={{ flex: 1 }}>
+                <div style={{ color: 'var(--success)', fontWeight: 800 }}>✓ Workout complete</div>
+                <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 2 }}>
+                  {formatDuration(session?.durationSeconds ?? 0)} ·{' '}
+                  {Math.round(session?.totalVolume ?? 0).toLocaleString()} {units}
+                </div>
+              </div>
+              <button
+                onClick={() => setSummaryOpen(true)}
+                className="tap"
+                style={{
+                  height: 40,
+                  padding: '0 16px',
+                  borderRadius: 999,
+                  border: 'none',
+                  background: 'var(--accent)',
+                  color: '#fff',
+                  fontWeight: 700,
+                  fontSize: 14,
+                }}
+              >
+                Summary
+              </button>
+            </div>
+          )}
         </div>
-      )}
+      </Screen>
 
-      {isCompleted && (
-        <div
-          className="pb-safe"
-          style={{ position: 'fixed', left: 0, right: 0, bottom: 64, padding: '10px 16px', zIndex: 35 }}
-        >
-          <div
-            className="card"
-            style={{
-              maxWidth: 600,
-              margin: '0 auto',
-              padding: 14,
-              textAlign: 'center',
-              color: 'var(--success)',
-              fontWeight: 700,
-              borderColor: 'var(--success)',
-            }}
-          >
-            ✓ Workout complete — {formatDuration(session?.durationSeconds ?? 0)}
-          </div>
-        </div>
-      )}
-
-      {suggestions && (
+      {summaryOpen && suggestions && (
         <ProgressionSummary
           suggestions={suggestions}
           units={units}
-          onClose={() => setSuggestions(null)}
+          onClose={() => setSummaryOpen(false)}
         />
+      )}
+
+      {restSecs != null && (
+        <RestTimer defaultSeconds={restSecs} onClose={() => setRestSecs(null)} />
       )}
     </>
   )

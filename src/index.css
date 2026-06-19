@@ -61,6 +61,24 @@ body,
   height: 100%;
 }
 
+/* App shell: a fixed-height flex column so the tab bar is a real footer that
+   can't drift during iOS Safari toolbar transitions / overscroll. The routed
+   content scrolls inside .app-scroll, not the document body. */
+.app-shell {
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.app-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -108,6 +126,12 @@ button {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

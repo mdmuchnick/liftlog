@@ -125,6 +125,8 @@ export interface Settings {
   theme: 'dark' | 'light' | 'minimal'
   defaultRestSeconds: number
   weekStart: 'monday' | 'sunday'
+  /** Auto-start the rest timer when a set/exercise is checked complete. */
+  autoRest?: boolean
   userName?: string
 }
 

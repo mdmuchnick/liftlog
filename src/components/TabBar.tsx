@@ -13,14 +13,10 @@ export default function TabBar() {
     <nav
       className="pb-safe"
       style={{
-        position: 'fixed',
-        left: 0,
-        right: 0,
-        bottom: 0,
+        flexShrink: 0,
         background: 'var(--surface)',
         borderTop: '1px solid var(--border)',
         zIndex: 40,
-        backdropFilter: 'blur(10px)',
       }}
     >
       <div style={{ display: 'flex', maxWidth: 600, margin: '0 auto' }}>

@@ -8,7 +8,7 @@ import type {
 
 /** Round to the nearest sensible plate increment for the unit. */
 function roundWeight(w: number, units: 'lbs' | 'kg'): number {
-  const step = units === 'lbs' ? 5 : 2.5
+  const step = units === 'lbs' ? 1 : 0.5
   return Math.round(w / step) * step
 }
 

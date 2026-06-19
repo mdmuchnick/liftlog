@@ -538,5 +538,6 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: 'dark',
   defaultRestSeconds: 90,
   weekStart: 'monday',
+  autoRest: true,
   userName: 'Marc',
 }

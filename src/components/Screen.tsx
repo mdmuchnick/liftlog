@@ -73,7 +73,7 @@ export default function Screen({ title, subtitle, right, back, children, noPadBo
         style={{
           maxWidth: 600,
           margin: '0 auto',
-          padding: `16px 16px ${noPadBottom ? 16 : 96}px`,
+          padding: `16px 16px ${noPadBottom ? 16 : 28}px`,
         }}
       >
         {children}

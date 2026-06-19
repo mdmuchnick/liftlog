@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { Check, Plus, Timer, X } from 'lucide-react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { ArrowLeft, Check, Plus, RefreshCw, Timer, X } from 'lucide-react'
 import Screen from '../components/Screen'
 import ExerciseImage from '../components/ExerciseImage'
 import Stepper from '../components/Stepper'
@@ -20,8 +20,10 @@ import {
   setExerciseWeight,
   startOrGetSession,
   toggleSet,
+  updateExercise,
   updateSetLog,
 } from '../data/repo'
+import { fetchExerciseDetails } from '../data/exerciseSearch'
 import type { Routine, SetLog } from '../data/types'
 import { formatReps, formatWeight } from '../lib/ui'
 import { formatShort, weekday } from '../lib/date'
@@ -29,6 +31,7 @@ import { topSet } from '../lib/metrics'
 
 export default function ExerciseDetail() {
   const { date = '', rexId = '' } = useParams()
+  const navigate = useNavigate()
   const settings = useSettings()
   const exMap = useExerciseMap()
   const session = useSessionForDate(date)
@@ -37,6 +40,9 @@ export default function ExerciseDetail() {
   const allSessions = useSessions()
   const [routine, setRoutine] = useState<Routine | null>(null)
   const [showTimer, setShowTimer] = useState(false)
+  const [restTick, setRestTick] = useState(0)
+  const [fetching, setFetching] = useState(false)
+  const [fetchMsg, setFetchMsg] = useState<string | null>(null)
 
   // Resolve the routine for this date: a started session pins it; otherwise
   // fall back to the override / weekly schedule so detail works pre-session.
@@ -84,11 +90,18 @@ export default function ExerciseDetail() {
     return s.setLogs.filter((x) => x.routineExerciseId === rexId)
   }
 
+  const openRest = () => {
+    setRestTick((t) => t + 1)
+    setShowTimer(true)
+  }
+
   const onToggle = async (log: SetLog) => {
     const current = await ensureSessionLogs()
     const target = current.find((l) => l.id === log.id) ?? log
     const s = session ?? (routine ? await startOrGetSession(date, routine) : undefined)
     if (s) await toggleSet(s.id, target.id)
+    // Auto-start rest when a set is checked complete (not when un-checking).
+    if (!log.completed && settings?.autoRest !== false) openRest()
   }
 
   const onChangeField = async (log: SetLog, patch: Partial<SetLog>) => {
@@ -115,6 +128,31 @@ export default function ExerciseDetail() {
     await setExerciseWeight(s.id, rexId, weight)
   }
 
+  const onFindDetails = async () => {
+    if (!ex) return
+    setFetching(true)
+    setFetchMsg(null)
+    try {
+      const d = await fetchExerciseDetails(ex.name)
+      if (d) {
+        await updateExercise(ex.id, {
+          instructions: d.instructions,
+          images: d.images,
+          primaryMuscle: d.primaryMuscle,
+          secondaryMuscles: d.secondaryMuscles,
+          equipment: d.equipment,
+          category: d.category,
+        })
+        setFetchMsg(`Updated from “${d.matchedName}”.`)
+      } else {
+        setFetchMsg('No close match found — try a more common name.')
+      }
+    } catch {
+      setFetchMsg('Could not fetch — check your connection.')
+    }
+    setFetching(false)
+  }
+
   // Working weight = the load shown on the first not-yet-done set (what you'll lift next).
   const workingWeight =
     logs.find((l) => !l.completed)?.actualWeight ??
@@ -138,7 +176,7 @@ export default function ExerciseDetail() {
         right={
           rex ? (
             <button
-              onClick={() => setShowTimer(true)}
+              onClick={openRest}
               className="tap"
               aria-label="rest timer"
               style={{
@@ -165,6 +203,42 @@ export default function ExerciseDetail() {
         <div style={{ height: 200, marginBottom: 14 }}>
           <ExerciseImage images={ex.images} alt={ex.name} variant="detail" />
         </div>
+
+        {/* User-added exercise: fetch instructions + images on demand */}
+        {ex.userAdded && (
+          <div style={{ marginBottom: 14 }}>
+            <button
+              onClick={onFindDetails}
+              className="tap"
+              disabled={fetching}
+              style={{
+                width: '100%',
+                height: 46,
+                borderRadius: 12,
+                border: '1px solid var(--accent)',
+                background: 'var(--accent-soft)',
+                color: 'var(--accent)',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+              }}
+            >
+              <RefreshCw size={16} style={fetching ? { animation: 'spin 1s linear infinite' } : undefined} />
+              {fetching
+                ? 'Searching…'
+                : ex.images.length
+                  ? 'Refresh instructions & images'
+                  : 'Find instructions & images'}
+            </button>
+            {fetchMsg && (
+              <div style={{ marginTop: 8, fontSize: 13, color: 'var(--muted)', textAlign: 'center' }}>
+                {fetchMsg}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Meta chips */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 18 }}>
@@ -204,7 +278,7 @@ export default function ExerciseDetail() {
               <Stepper
                 value={workingWeight}
                 onChange={onSetWorkingWeight}
-                step={units === 'lbs' ? 5 : 2.5}
+                step={units === 'lbs' ? 1 : 0.5}
                 suffix={units}
                 width={132}
               />
@@ -320,10 +394,37 @@ export default function ExerciseDetail() {
             </div>
           )}
         </section>
+
+        {/* Clear exit back to the workout list */}
+        <button
+          onClick={() => navigate(-1)}
+          className="tap"
+          style={{
+            width: '100%',
+            height: 50,
+            marginTop: 24,
+            borderRadius: 14,
+            border: 'none',
+            background: 'var(--accent)',
+            color: '#fff',
+            fontWeight: 800,
+            fontSize: 16,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+          }}
+        >
+          <ArrowLeft size={18} /> Done — back to workout
+        </button>
       </Screen>
 
       {showTimer && rex && (
-        <RestTimer defaultSeconds={rex.restSeconds || settings.defaultRestSeconds} onClose={() => setShowTimer(false)} />
+        <RestTimer
+          key={restTick}
+          defaultSeconds={rex.restSeconds || settings.defaultRestSeconds}
+          onClose={() => setShowTimer(false)}
+        />
       )}
     </>
   )
@@ -360,7 +461,7 @@ function SetRow({
         {log.setNumber}
       </span>
       <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-        <Stepper value={weight} onChange={onWeight} step={units === 'lbs' ? 5 : 2.5} width={118} />
+        <Stepper value={weight} onChange={onWeight} step={units === 'lbs' ? 1 : 0.5} width={118} />
       </div>
       <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
         <Stepper value={reps} onChange={onReps} step={1} width={104} min={0} />

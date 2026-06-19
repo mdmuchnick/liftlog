@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, Download, Plus, RotateCcw, Upload } from 'lucide-react'
+import { ChevronDown, ChevronRight, Download, Plus, RotateCcw, Upload } from 'lucide-react'
 import Screen from '../components/Screen'
 import Segmented from '../components/Segmented'
 import Stepper from '../components/Stepper'
@@ -152,35 +152,71 @@ export default function Profile() {
             />
           </div>
         </Row>
+        <Row label="Auto rest timer">
+          <div style={{ width: 120 }}>
+            <Segmented
+              size="sm"
+              options={[
+                { value: 'on', label: 'On' },
+                { value: 'off', label: 'Off' },
+              ]}
+              value={settings.autoRest === false ? 'off' : 'on'}
+              onChange={(v) => updateSettings({ autoRest: v === 'on' })}
+            />
+          </div>
+        </Row>
       </Section>
 
-      {/* Weekly schedule */}
+      {/* Weekly schedule — one dropdown per day (handles long workout names) */}
       <Section title="Weekly Schedule">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="card" style={{ padding: 6 }}>
           {WD.map((label, wd) => {
             const rid = assignmentFor(wd)
+            const r = routines.find((x) => x.id === rid)
+            const dot = r ? TYPE_COLORS[r.type] : 'var(--muted)'
             return (
-              <div key={wd} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ width: 38, fontWeight: 700, fontSize: 13, color: 'var(--muted)' }}>{label}</span>
-                <div className="no-scrollbar" style={{ flex: 1, overflowX: 'auto' }}>
-                  <div style={{ display: 'flex', gap: 6 }}>
+              <div
+                key={wd}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '8px 10px',
+                  borderTop: wd === 0 ? 'none' : '1px solid var(--border)',
+                }}
+              >
+                <span style={{ width: 40, fontWeight: 700, fontSize: 14 }}>{label}</span>
+                <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <span
+                    style={{
+                      position: 'absolute',
+                      left: 12,
+                      width: 9,
+                      height: 9,
+                      borderRadius: 999,
+                      background: dot,
+                      pointerEvents: 'none',
+                    }}
+                  />
+                  <select
+                    value={rid ?? 'rest'}
+                    onChange={(e) => setAssignment(wd, e.target.value === 'rest' ? null : e.target.value)}
+                    style={daySelect}
+                  >
                     {routines
-                      .filter((r) => r.type !== 'rest')
-                      .map((r) => (
-                        <button
-                          key={r.id}
-                          className="tap"
-                          onClick={() => setAssignment(wd, r.id)}
-                          style={pill(rid === r.id)}
-                        >
-                          <span style={{ width: 7, height: 7, borderRadius: 999, background: TYPE_COLORS[r.type] }} />
-                          {r.name.replace(' Day', '')}
-                        </button>
+                      .filter((x) => x.type !== 'rest')
+                      .map((x) => (
+                        <option key={x.id} value={x.id}>
+                          {x.name}
+                        </option>
                       ))}
-                    <button className="tap" onClick={() => setAssignment(wd, null)} style={pill(rid === null)}>
-                      Rest
-                    </button>
-                  </div>
+                    <option value="rest">Rest</option>
+                  </select>
+                  <ChevronDown
+                    size={16}
+                    color="var(--muted)"
+                    style={{ position: 'absolute', right: 12, pointerEvents: 'none' }}
+                  />
                 </div>
               </div>
             )
@@ -312,19 +348,17 @@ const listBtn: React.CSSProperties = {
   minHeight: 52,
 }
 
-function pill(active: boolean): React.CSSProperties {
-  return {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 5,
-    whiteSpace: 'nowrap',
-    padding: '7px 11px',
-    borderRadius: 999,
-    border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-    background: active ? 'var(--accent-soft)' : 'transparent',
-    color: active ? 'var(--accent)' : 'var(--muted)',
-    fontWeight: 600,
-    fontSize: 12,
-    minHeight: 34,
-  }
+const daySelect: React.CSSProperties = {
+  flex: 1,
+  height: 44,
+  borderRadius: 12,
+  border: '1px solid var(--border)',
+  background: 'var(--surface-2)',
+  color: 'var(--text)',
+  fontWeight: 600,
+  fontSize: 14,
+  padding: '0 36px 0 30px',
+  appearance: 'none',
+  WebkitAppearance: 'none',
+  width: '100%',
 }

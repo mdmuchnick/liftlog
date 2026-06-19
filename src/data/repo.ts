@@ -2,6 +2,7 @@ import { db, resetAll } from './db'
 import { uid } from './seed'
 import type {
   BodyMetric,
+  Exercise,
   ProgressionSuggestion,
   Routine,
   ScheduledWorkout,
@@ -246,6 +247,28 @@ export async function upsertScheduledStatus(
 
 export async function setDayRoutine(date: string, routineId: string | null): Promise<void> {
   await upsertScheduledStatus(date, routineId, routineId ? 'planned' : 'skipped')
+}
+
+// ---------- Exercises (catalog) ----------
+export async function createCustomExercise(name: string): Promise<Exercise> {
+  const ex: Exercise = {
+    id: `ux_${uid()}`,
+    name: name.trim() || 'New Exercise',
+    primaryMuscle: 'core',
+    secondaryMuscles: [],
+    equipment: 'other',
+    category: 'isolation',
+    instructions: [],
+    images: [],
+    userAdded: true,
+  }
+  await db.exercises.put(ex)
+  return ex
+}
+
+export async function updateExercise(id: string, patch: Partial<Exercise>): Promise<void> {
+  const cur = await db.exercises.get(id)
+  if (cur) await db.exercises.put({ ...cur, ...patch })
 }
 
 // ---------- Routines ----------

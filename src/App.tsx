@@ -49,16 +49,20 @@ export default function App() {
   return (
     <ThemeProvider>
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Today />} />
-          <Route path="/exercise/:date/:rexId" element={<ExerciseDetail />} />
-          <Route path="/calendar" element={<CalendarScreen />} />
-          <Route path="/day/:date" element={<DayDetail />} />
-          <Route path="/progress" element={<Progress />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/routine/:id" element={<RoutineEditor />} />
-        </Routes>
-        <TabBar />
+        <div className="app-shell">
+          <div className="app-scroll" id="app-scroll">
+            <Routes>
+              <Route path="/" element={<Today />} />
+              <Route path="/exercise/:date/:rexId" element={<ExerciseDetail />} />
+              <Route path="/calendar" element={<CalendarScreen />} />
+              <Route path="/day/:date" element={<DayDetail />} />
+              <Route path="/progress" element={<Progress />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/routine/:id" element={<RoutineEditor />} />
+            </Routes>
+          </div>
+          <TabBar />
+        </div>
       </BrowserRouter>
     </ThemeProvider>
   )

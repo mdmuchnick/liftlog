@@ -15,7 +15,15 @@ import Segmented from '../components/Segmented'
 import Stepper from '../components/Stepper'
 import ExerciseImage from '../components/ExerciseImage'
 import { useExercises, useRoutine, useSettings } from '../data/hooks'
-import { deleteRoutine, duplicateRoutine, saveRoutine, setDayRoutine } from '../data/repo'
+import {
+  createCustomExercise,
+  deleteRoutine,
+  duplicateRoutine,
+  saveRoutine,
+  setDayRoutine,
+  updateExercise,
+} from '../data/repo'
+import { fetchExerciseDetails } from '../data/exerciseSearch'
 import { formatLong, todayISO } from '../lib/date'
 import { uid } from '../data/seed'
 import type {
@@ -104,6 +112,29 @@ export default function RoutineEditor() {
     persist({ ...draft, exercises: [...draft.exercises, newRex] })
     setPicking(false)
     setExpanded(newRex.id)
+  }
+
+  // Add a brand-new exercise from typed text, then fetch its instructions +
+  // images in the background (works when online).
+  const addCustomExercise = async (name: string) => {
+    const ex = await createCustomExercise(name)
+    addExercise(ex)
+    fetchExerciseDetails(name)
+      .then((d) => {
+        if (d) {
+          updateExercise(ex.id, {
+            instructions: d.instructions,
+            images: d.images,
+            primaryMuscle: d.primaryMuscle,
+            secondaryMuscles: d.secondaryMuscles,
+            equipment: d.equipment,
+            category: d.category,
+          })
+        }
+      })
+      .catch(() => {
+        /* offline or no match — exercise still usable, can refresh later */
+      })
   }
 
   const onDelete = async () => {
@@ -250,7 +281,7 @@ export default function RoutineEditor() {
                         <Stepper value={rex.targetSets} step={1} min={1} max={10} onChange={(v) => updateRex(rex.id, { targetSets: v })} width={110} />
                       </Field>
                       <Field label={`Weight (${units})`}>
-                        <Stepper value={rex.targetWeight} step={units === 'lbs' ? 5 : 2.5} onChange={(v) => updateRex(rex.id, { targetWeight: v })} width={120} />
+                        <Stepper value={rex.targetWeight} step={units === 'lbs' ? 1 : 0.5} onChange={(v) => updateRex(rex.id, { targetWeight: v })} width={120} />
                       </Field>
                       <Field label="Reps min">
                         <Stepper value={rex.targetRepsMin} step={1} min={1} max={rex.targetRepsMax} onChange={(v) => updateRex(rex.id, { targetRepsMin: v })} width={104} />
@@ -284,7 +315,7 @@ export default function RoutineEditor() {
                         <Field label={`Increment (${units})`}>
                           <Stepper
                             value={rex.progression.incrementWeight}
-                            step={units === 'lbs' ? 5 : 2.5}
+                            step={units === 'lbs' ? 1 : 0.5}
                             min={0}
                             onChange={(v) => updateRex(rex.id, { progression: { ...rex.progression, incrementWeight: v } })}
                             width={120}
@@ -345,6 +376,7 @@ export default function RoutineEditor() {
         <ExercisePicker
           exercises={exercises}
           onPick={addExercise}
+          onAddCustom={addCustomExercise}
           onClose={() => setPicking(false)}
         />
       )}
@@ -355,16 +387,20 @@ export default function RoutineEditor() {
 function ExercisePicker({
   exercises,
   onPick,
+  onAddCustom,
   onClose,
 }: {
   exercises: Exercise[]
   onPick: (e: Exercise) => void
+  onAddCustom: (name: string) => void
   onClose: () => void
 }) {
   const [q, setQ] = useState('')
+  const query = q.trim()
   const filtered = exercises
     .filter((e) => e.name.toLowerCase().includes(q.toLowerCase()) || e.primaryMuscle.includes(q.toLowerCase()))
     .sort((a, b) => a.name.localeCompare(b.name))
+  const exactExists = exercises.some((e) => e.name.toLowerCase() === query.toLowerCase())
   return (
     <div
       onClick={onClose}
@@ -425,8 +461,50 @@ function ExercisePicker({
               </div>
             </button>
           ))}
-          {filtered.length === 0 && (
+          {filtered.length === 0 && !query && (
             <div style={{ padding: 20, textAlign: 'center', color: 'var(--muted)' }}>No matches.</div>
+          )}
+
+          {/* Add a typed exercise that isn't in the library yet */}
+          {query.length > 1 && !exactExists && (
+            <button
+              className="tap"
+              onClick={() => onAddCustom(query)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: 12,
+                borderRadius: 12,
+                border: '1px dashed var(--accent)',
+                background: 'var(--accent-soft)',
+                color: 'var(--accent)',
+                textAlign: 'left',
+              }}
+            >
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  flexShrink: 0,
+                  borderRadius: 10,
+                  background: 'var(--surface)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 22,
+                  fontWeight: 800,
+                }}
+              >
+                +
+              </div>
+              <div>
+                <div style={{ fontWeight: 800 }}>Add “{query}”</div>
+                <div style={{ color: 'var(--muted)', fontSize: 12 }}>
+                  Creates a custom exercise &amp; fetches instructions + images
+                </div>
+              </div>
+            </button>
           )}
         </div>
       </div>
