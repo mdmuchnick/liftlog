@@ -7,7 +7,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { Dumbbell, Clock, Activity, BarChart3, Plus } from 'lucide-react'
+import { Dumbbell, Clock, Activity, BarChart3, ChevronDown, Plus } from 'lucide-react'
 import Screen from '../components/Screen'
 import Segmented from '../components/Segmented'
 import Stepper from '../components/Stepper'
@@ -93,33 +93,36 @@ export default function Progress() {
           <EmptyChart text="Log a workout to see your strength curve." />
         ) : (
           <div className="card" style={{ padding: 14 }}>
-            <div style={{ marginBottom: 12, overflowX: 'auto' }} className="no-scrollbar">
-              <div style={{ display: 'flex', gap: 8 }}>
-                {exerciseIds.map((id) => {
-                  const name = exMap.get(id)?.name ?? 'Exercise'
-                  const active = id === activeExerciseId
-                  return (
-                    <button
-                      key={id}
-                      className="tap"
-                      onClick={() => setExerciseId(id)}
-                      style={{
-                        whiteSpace: 'nowrap',
-                        padding: '7px 12px',
-                        borderRadius: 999,
-                        border: '1px solid var(--border)',
-                        background: active ? 'var(--accent)' : 'transparent',
-                        color: active ? '#fff' : 'var(--muted)',
-                        fontWeight: 600,
-                        fontSize: 13,
-                        minHeight: 36,
-                      }}
-                    >
-                      {name}
-                    </button>
-                  )
-                })}
-              </div>
+            <div style={{ position: 'relative', marginBottom: 12 }}>
+              <select
+                value={activeExerciseId ?? ''}
+                onChange={(e) => setExerciseId(e.target.value)}
+                style={{
+                  width: '100%',
+                  height: 44,
+                  borderRadius: 12,
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface-2)',
+                  color: 'var(--text)',
+                  fontWeight: 700,
+                  fontSize: 14,
+                  padding: '0 38px 0 14px',
+                  appearance: 'none',
+                  WebkitAppearance: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                {exerciseIds.map((id) => (
+                  <option key={id} value={id}>
+                    {exMap.get(id)?.name ?? 'Exercise'}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={18}
+                color="var(--muted)"
+                style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
+              />
             </div>
             <ProgressChart data={series} units={units} suffix={units} />
           </div>

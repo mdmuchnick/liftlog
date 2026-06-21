@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Clock, Dumbbell, Moon } from 'lucide-react'
+import { ChevronRight, Clock, Dumbbell, Moon } from 'lucide-react'
 import Screen from '../components/Screen'
 import ProgressRing from '../components/ProgressRing'
 import ExerciseCard from '../components/ExerciseCard'
@@ -147,7 +147,21 @@ export default function Today() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {completed.map((s) => (
-              <div key={s.id} className="card" style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
+              <button
+                key={s.id}
+                className="tap card"
+                onClick={() => navigate(`/summary/${s.date}`)}
+                style={{
+                  padding: 14,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  width: '100%',
+                  textAlign: 'left',
+                  color: 'var(--text)',
+                  cursor: 'pointer',
+                }}
+              >
                 <span
                   style={{
                     width: 10,
@@ -167,7 +181,8 @@ export default function Today() {
                   </div>
                   <div style={{ color: 'var(--muted)' }}>{formatDuration(s.durationSeconds ?? 0)}</div>
                 </div>
-              </div>
+                <ChevronRight size={18} color="var(--muted)" style={{ flexShrink: 0 }} />
+              </button>
             ))}
           </div>
         )}
@@ -346,7 +361,7 @@ export default function Today() {
                 </div>
               </div>
               <button
-                onClick={() => setSummaryOpen(true)}
+                onClick={() => navigate(`/summary/${today}`)}
                 className="tap"
                 style={{
                   height: 40,

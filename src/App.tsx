@@ -8,6 +8,7 @@ import DayDetail from './screens/DayDetail'
 import Progress from './screens/Progress'
 import Profile from './screens/Profile'
 import RoutineEditor from './screens/RoutineEditor'
+import WorkoutSummary from './screens/WorkoutSummary'
 import { ensureSeeded, runMigrations } from './data/db'
 import { useSettings } from './data/hooks'
 
@@ -61,6 +62,7 @@ export default function App() {
               <Route path="/progress" element={<Progress />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/routine/:id" element={<RoutineEditor />} />
+              <Route path="/summary/:date" element={<WorkoutSummary />} />
             </Routes>
           </div>
           <TabBar />
