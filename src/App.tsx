@@ -8,7 +8,7 @@ import DayDetail from './screens/DayDetail'
 import Progress from './screens/Progress'
 import Profile from './screens/Profile'
 import RoutineEditor from './screens/RoutineEditor'
-import { ensureSeeded } from './data/db'
+import { ensureSeeded, runMigrations } from './data/db'
 import { useSettings } from './data/hooks'
 
 function ThemeProvider({ children }: { children: React.ReactNode }) {
@@ -27,7 +27,9 @@ export default function App() {
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    ensureSeeded().then(() => setReady(true))
+    ensureSeeded()
+      .then(runMigrations)
+      .then(() => setReady(true))
   }, [])
 
   if (!ready) {

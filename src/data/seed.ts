@@ -407,11 +407,12 @@ export const SEED_EXERCISES: Exercise[] = [
     secondaryMuscles: ['shoulders'],
     equipment: 'bodyweight',
     category: 'isolation',
+    tracking: 'duration',
     images: img('Plank'),
     instructions: [
       'Forearms on the floor under the shoulders, body in a straight line.',
       'Brace the abs and squeeze the glutes; avoid letting the hips sag.',
-      'Breathe steadily and hold for the target time (log seconds as reps).',
+      'Breathe steadily and hold for the target time, logging the seconds held.',
       'Keep the neck neutral, gaze just ahead of the hands.',
     ],
   },

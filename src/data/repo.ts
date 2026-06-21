@@ -60,6 +60,7 @@ function buildSetLogs(sessionId: string, routine: Routine): SetLog[] {
         setNumber: i,
         targetReps: rex.targetRepsMax,
         targetWeight: rex.targetWeight,
+        targetDuration: rex.targetDuration,
         completed: false,
       })
     }
@@ -132,6 +133,7 @@ export async function addSet(
     setNumber: logs.length + 1,
     targetReps: last.actualReps ?? last.targetReps,
     targetWeight: last.actualWeight ?? last.targetWeight,
+    targetDuration: last.actualDuration ?? last.targetDuration,
     completed: false,
   }
   // Insert right after the exercise's existing logs to keep order tidy.
@@ -174,6 +176,23 @@ export async function setExerciseWeight(
   session.setLogs = session.setLogs.map((s) =>
     s.routineExerciseId === routineExerciseId && !s.completed
       ? { ...s, actualWeight: weight }
+      : s,
+  )
+  await db.sessions.put(session)
+  return session
+}
+
+/** Set the working hold time (seconds) for every not-yet-completed set. */
+export async function setExerciseDuration(
+  sessionId: string,
+  routineExerciseId: string,
+  seconds: number,
+): Promise<WorkoutSession | undefined> {
+  const session = await db.sessions.get(sessionId)
+  if (!session) return
+  session.setLogs = session.setLogs.map((s) =>
+    s.routineExerciseId === routineExerciseId && !s.completed
+      ? { ...s, actualDuration: seconds }
       : s,
   )
   await db.sessions.put(session)

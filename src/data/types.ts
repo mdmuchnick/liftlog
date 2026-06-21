@@ -25,6 +25,9 @@ export type ExerciseCategory = 'compound' | 'isolation'
 
 export type ProgressionType = 'linear' | 'double' | 'manual'
 
+/** How a set is measured: load × reps (default) or a timed hold × reps. */
+export type TrackingType = 'weight' | 'duration'
+
 export type RoutineType = 'push' | 'pull' | 'upper' | 'lower' | 'legs' | 'rest' | 'custom'
 
 export type WorkoutStatus = 'planned' | 'in_progress' | 'completed' | 'skipped'
@@ -39,6 +42,8 @@ export interface Exercise {
   instructions: string[]
   /** Bundled demo images (start/end frames), public-domain free-exercise-db. */
   images: string[]
+  /** Measurement style. Omitted = 'weight' (load × reps). */
+  tracking?: TrackingType
   userAdded?: boolean
 }
 
@@ -59,6 +64,8 @@ export interface RoutineExercise {
   targetRepsMin: number
   targetRepsMax: number
   targetWeight: number
+  /** Seconds to hold, for duration-tracked exercises (e.g. Plank). */
+  targetDuration?: number
   restSeconds: number
   progression: ProgressionRule
   notes?: string
@@ -92,8 +99,11 @@ export interface SetLog {
   setNumber: number
   targetReps: number
   targetWeight: number
+  /** Seconds held, for duration-tracked exercises. */
+  targetDuration?: number
   actualReps?: number
   actualWeight?: number
+  actualDuration?: number
   completed: boolean
   rpe?: number
 }

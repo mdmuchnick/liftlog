@@ -293,6 +293,7 @@ export default function Today() {
                 repsMin={rex.targetRepsMin}
                 repsMax={rex.targetRepsMax}
                 weight={rex.targetWeight}
+                duration={rex.targetDuration}
                 units={units}
                 completedSets={completedSetsFor(rex.id)}
                 onToggleAll={() => toggleAllForExercise(rex.id, exSets)}

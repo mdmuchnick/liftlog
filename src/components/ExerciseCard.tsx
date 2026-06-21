@@ -1,6 +1,6 @@
 import { Check, ChevronRight } from 'lucide-react'
 import type { Exercise } from '../data/types'
-import { formatReps, formatWeight } from '../lib/ui'
+import { DEFAULT_DURATION, formatDuration, formatReps, formatWeight } from '../lib/ui'
 import ExerciseImage from './ExerciseImage'
 
 interface Props {
@@ -9,6 +9,7 @@ interface Props {
   repsMin: number
   repsMax: number
   weight: number
+  duration?: number
   units: 'lbs' | 'kg'
   completedSets: number
   onToggleAll: () => void
@@ -21,6 +22,7 @@ export default function ExerciseCard({
   repsMin,
   repsMax,
   weight,
+  duration,
   units,
   completedSets,
   onToggleAll,
@@ -93,7 +95,10 @@ export default function ExerciseCard({
             {exercise.name}
           </div>
           <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 2 }}>
-            {sets} × {formatReps(repsMin, repsMax)} · {formatWeight(weight, units)}
+            {sets} × {formatReps(repsMin, repsMax)} ·{' '}
+            {exercise.tracking === 'duration'
+              ? `${formatDuration(duration ?? DEFAULT_DURATION)} hold`
+              : formatWeight(weight, units)}
             <span style={{ color: 'var(--accent)', marginLeft: 8 }}>
               {completedSets}/{sets}
             </span>

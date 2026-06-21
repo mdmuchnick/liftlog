@@ -12,7 +12,7 @@ import {
 } from '../data/hooks'
 import { setDayRoutine } from '../data/repo'
 import { formatLong, todayISO, weekday } from '../lib/date'
-import { formatReps, formatWeight, TYPE_COLORS, TYPE_LABEL } from '../lib/ui'
+import { DEFAULT_DURATION, formatDuration, formatReps, formatWeight, TYPE_COLORS, TYPE_LABEL } from '../lib/ui'
 
 export default function DayDetail() {
   const { date = todayISO() } = useParams()
@@ -80,7 +80,9 @@ export default function DayDetail() {
                       <div style={{ fontWeight: 700 }}>{ex.name}</div>
                       <div style={{ color: 'var(--muted)', fontSize: 13 }}>
                         {rex.targetSets} × {formatReps(rex.targetRepsMin, rex.targetRepsMax)} ·{' '}
-                        {formatWeight(rex.targetWeight, units)}
+                        {ex.tracking === 'duration'
+                          ? `${formatDuration(rex.targetDuration ?? DEFAULT_DURATION)} hold`
+                          : formatWeight(rex.targetWeight, units)}
                       </div>
                     </div>
                   </div>

@@ -17,6 +17,7 @@ import { db } from '../data/db'
 import {
   addSet,
   removeSet,
+  setExerciseDuration,
   setExerciseWeight,
   startOrGetSession,
   toggleSet,
@@ -25,7 +26,7 @@ import {
 } from '../data/repo'
 import { fetchExerciseDetails } from '../data/exerciseSearch'
 import type { Routine, SetLog } from '../data/types'
-import { formatReps, formatWeight } from '../lib/ui'
+import { DEFAULT_DURATION, formatDuration, formatReps, formatWeight } from '../lib/ui'
 import { formatShort, weekday } from '../lib/date'
 import { topSet } from '../lib/metrics'
 
@@ -128,6 +129,12 @@ export default function ExerciseDetail() {
     await setExerciseWeight(s.id, rexId, weight)
   }
 
+  const onSetWorkingDuration = async (seconds: number) => {
+    if (!routine) return
+    const s = session ?? (await startOrGetSession(date, routine))
+    await setExerciseDuration(s.id, rexId, seconds)
+  }
+
   const onFindDetails = async () => {
     if (!ex) return
     setFetching(true)
@@ -153,12 +160,13 @@ export default function ExerciseDetail() {
     setFetching(false)
   }
 
-  // Working weight = the load shown on the first not-yet-done set (what you'll lift next).
-  const workingWeight =
-    logs.find((l) => !l.completed)?.actualWeight ??
-    logs.find((l) => !l.completed)?.targetWeight ??
-    rex?.targetWeight ??
-    0
+  const isDuration = ex.tracking === 'duration'
+
+  // Working value = what's shown on the first not-yet-done set (what you'll do next).
+  const nextSet = logs.find((l) => !l.completed)
+  const workingWeight = nextSet?.actualWeight ?? nextSet?.targetWeight ?? rex?.targetWeight ?? 0
+  const workingDuration =
+    nextSet?.actualDuration ?? nextSet?.targetDuration ?? rex?.targetDuration ?? DEFAULT_DURATION
 
   // Recent history: last few completed sessions containing this exercise.
   const history = (allSessions ?? [])
@@ -166,7 +174,15 @@ export default function ExerciseDetail() {
     .filter((s) => s.setLogs.some((l) => l.exerciseId === ex.id))
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, 5)
-    .map((s) => ({ date: s.date, top: topSet(s.setLogs.filter((l) => l.exerciseId === ex.id)) }))
+    .map((s) => {
+      const exLogs = s.setLogs.filter((l) => l.exerciseId === ex.id && l.completed)
+      const top = topSet(s.setLogs.filter((l) => l.exerciseId === ex.id))
+      const bestHold = exLogs.reduce(
+        (m, l) => Math.max(m, l.actualDuration ?? l.targetDuration ?? 0),
+        0,
+      )
+      return { date: s.date, top, bestHold }
+    })
 
   return (
     <>
@@ -257,7 +273,9 @@ export default function ExerciseDetail() {
           <section style={{ marginBottom: 22 }}>
             <SectionTitle>
               Sets · target {rex.targetSets} × {formatReps(rex.targetRepsMin, rex.targetRepsMax)} ·{' '}
-              {formatWeight(rex.targetWeight, units)}
+              {isDuration
+                ? `${formatDuration(rex.targetDuration ?? DEFAULT_DURATION)} hold`
+                : formatWeight(rex.targetWeight, units)}
             </SectionTitle>
 
             {/* Working-weight quick set: applies to every set you haven't logged yet */}
@@ -272,22 +290,36 @@ export default function ExerciseDetail() {
               }}
             >
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>Working weight</div>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>
+                  {isDuration ? 'Working time' : 'Working weight'}
+                </div>
                 <div style={{ color: 'var(--muted)', fontSize: 12 }}>Sets all unlogged sets</div>
               </div>
-              <Stepper
-                value={workingWeight}
-                onChange={onSetWorkingWeight}
-                step={units === 'lbs' ? 1 : 0.5}
-                suffix={units}
-                width={132}
-              />
+              {isDuration ? (
+                <Stepper
+                  value={workingDuration}
+                  onChange={onSetWorkingDuration}
+                  step={5}
+                  min={5}
+                  max={600}
+                  suffix="sec"
+                  width={150}
+                />
+              ) : (
+                <Stepper
+                  value={workingWeight}
+                  onChange={onSetWorkingWeight}
+                  step={units === 'lbs' ? 1 : 0.5}
+                  suffix={units}
+                  width={150}
+                />
+              )}
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ display: 'flex', gap: 8, padding: '0 4px', color: 'var(--muted)', fontSize: 11, fontWeight: 600 }}>
                 <span style={{ width: 28 }}>SET</span>
-                <span style={{ flex: 1, textAlign: 'center' }}>WEIGHT ({units})</span>
+                <span style={{ flex: 1, textAlign: 'center' }}>{isDuration ? 'TIME (sec)' : `WEIGHT (${units})`}</span>
                 <span style={{ flex: 1, textAlign: 'center' }}>REPS</span>
                 <span style={{ width: 44, textAlign: 'center' }}>✓</span>
               </div>
@@ -296,8 +328,10 @@ export default function ExerciseDetail() {
                   key={log.id}
                   log={log}
                   units={units}
+                  isDuration={isDuration}
                   onToggle={() => onToggle(log)}
                   onWeight={(v) => onChangeField(log, { actualWeight: v })}
+                  onDuration={(v) => onChangeField(log, { actualDuration: v })}
                   onReps={(v) => onChangeField(log, { actualReps: v })}
                 />
               ))}
@@ -387,7 +421,13 @@ export default function ExerciseDetail() {
                 >
                   <span style={{ color: 'var(--muted)' }}>{formatShort(h.date)}</span>
                   <span style={{ fontWeight: 700 }}>
-                    {h.top ? `${formatWeight(h.top.weight, units)} × ${h.top.reps}` : '—'}
+                    {isDuration
+                      ? h.bestHold
+                        ? `${formatDuration(h.bestHold)} hold`
+                        : '—'
+                      : h.top
+                        ? `${formatWeight(h.top.weight, units)} × ${h.top.reps}`
+                        : '—'}
                   </span>
                 </div>
               ))}
@@ -433,17 +473,22 @@ export default function ExerciseDetail() {
 function SetRow({
   log,
   units,
+  isDuration,
   onToggle,
   onWeight,
+  onDuration,
   onReps,
 }: {
   log: SetLog
   units: 'lbs' | 'kg'
+  isDuration: boolean
   onToggle: () => void
   onWeight: (v: number) => void
+  onDuration: (v: number) => void
   onReps: (v: number) => void
 }) {
   const weight = log.actualWeight ?? log.targetWeight
+  const duration = log.actualDuration ?? log.targetDuration ?? DEFAULT_DURATION
   const reps = log.actualReps ?? log.targetReps
   return (
     <div
@@ -461,7 +506,11 @@ function SetRow({
         {log.setNumber}
       </span>
       <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-        <Stepper value={weight} onChange={onWeight} step={units === 'lbs' ? 1 : 0.5} width={118} />
+        {isDuration ? (
+          <Stepper value={duration} onChange={onDuration} step={5} min={5} max={600} width={118} />
+        ) : (
+          <Stepper value={weight} onChange={onWeight} step={units === 'lbs' ? 1 : 0.5} width={118} />
+        )}
       </div>
       <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
         <Stepper value={reps} onChange={onReps} step={1} width={104} min={0} />

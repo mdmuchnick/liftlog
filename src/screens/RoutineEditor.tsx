@@ -33,7 +33,7 @@ import type {
   RoutineExercise,
   RoutineType,
 } from '../data/types'
-import { TYPE_COLORS, TYPE_LABEL, formatReps } from '../lib/ui'
+import { TYPE_COLORS, TYPE_LABEL, formatReps, formatDuration, DEFAULT_DURATION } from '../lib/ui'
 
 const ROUTINE_TYPES: RoutineType[] = ['push', 'pull', 'legs', 'upper', 'lower', 'custom']
 
@@ -91,6 +91,7 @@ export default function RoutineEditor() {
   }
 
   const addExercise = (ex: Exercise) => {
+    const isDuration = ex.tracking === 'duration'
     const newRex: RoutineExercise = {
       id: uid(),
       exerciseId: ex.id,
@@ -99,9 +100,10 @@ export default function RoutineEditor() {
       targetRepsMin: ex.category === 'compound' ? 6 : 10,
       targetRepsMax: ex.category === 'compound' ? 8 : 12,
       targetWeight: 0,
+      ...(isDuration ? { targetDuration: DEFAULT_DURATION } : {}),
       restSeconds: settings.defaultRestSeconds,
       progression: {
-        type: ex.category === 'compound' ? 'linear' : 'double',
+        type: isDuration ? 'manual' : ex.category === 'compound' ? 'linear' : 'double',
         incrementWeight: ex.primaryMuscle === 'quads' || ex.primaryMuscle === 'hamstrings' ? 10 : 5,
         repRangeMin: ex.category === 'compound' ? 6 : 10,
         repRangeMax: ex.category === 'compound' ? 8 : 12,
@@ -249,6 +251,7 @@ export default function RoutineEditor() {
             const ex = exMap.get(rex.exerciseId)
             if (!ex) return null
             const open = expanded === rex.id
+            const isDuration = ex.tracking === 'duration'
             return (
               <div key={rex.id} className="card" style={{ overflow: 'hidden' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 12 }}>
@@ -263,8 +266,12 @@ export default function RoutineEditor() {
                     <div style={{ fontWeight: 700 }}>{ex.name}</div>
                     <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 2 }}>
                       {rex.targetSets} × {formatReps(rex.targetRepsMin, rex.targetRepsMax)} ·{' '}
-                      {rex.targetWeight === 0 ? 'BW' : `${rex.targetWeight} ${units}`} ·{' '}
-                      <span style={{ color: 'var(--accent)' }}>{progLabel(rex.progression.type)}</span>
+                      {isDuration
+                        ? `${formatDuration(rex.targetDuration ?? DEFAULT_DURATION)} hold`
+                        : rex.targetWeight === 0
+                          ? 'BW'
+                          : `${rex.targetWeight} ${units}`}{' '}
+                      · <span style={{ color: 'var(--accent)' }}>{progLabel(rex.progression.type)}</span>
                     </div>
                   </button>
                   <ChevronDown
@@ -280,9 +287,22 @@ export default function RoutineEditor() {
                       <Field label="Sets">
                         <Stepper value={rex.targetSets} step={1} min={1} max={10} onChange={(v) => updateRex(rex.id, { targetSets: v })} width={110} />
                       </Field>
-                      <Field label={`Weight (${units})`}>
-                        <Stepper value={rex.targetWeight} step={units === 'lbs' ? 1 : 0.5} onChange={(v) => updateRex(rex.id, { targetWeight: v })} width={120} />
-                      </Field>
+                      {isDuration ? (
+                        <Field label="Hold time (sec)">
+                          <Stepper
+                            value={rex.targetDuration ?? DEFAULT_DURATION}
+                            step={5}
+                            min={5}
+                            max={600}
+                            onChange={(v) => updateRex(rex.id, { targetDuration: v })}
+                            width={120}
+                          />
+                        </Field>
+                      ) : (
+                        <Field label={`Weight (${units})`}>
+                          <Stepper value={rex.targetWeight} step={units === 'lbs' ? 1 : 0.5} onChange={(v) => updateRex(rex.id, { targetWeight: v })} width={120} />
+                        </Field>
+                      )}
                       <Field label="Reps min">
                         <Stepper value={rex.targetRepsMin} step={1} min={1} max={rex.targetRepsMax} onChange={(v) => updateRex(rex.id, { targetRepsMin: v })} width={104} />
                       </Field>
@@ -294,7 +314,13 @@ export default function RoutineEditor() {
                       </Field>
                     </div>
 
-                    {/* Progression */}
+                    {/* Progression — not applicable to timed holds */}
+                    {isDuration ? (
+                      <p style={{ color: 'var(--muted)', fontSize: 12, margin: '16px 0 0' }}>
+                        Timed hold — track your seconds each set; no weight progression.
+                      </p>
+                    ) : (
+                    <>
                     <label style={{ ...fieldLabel, marginTop: 16 }}>Progression rule</label>
                     <Segmented
                       size="sm"
@@ -346,6 +372,8 @@ export default function RoutineEditor() {
                           </>
                         )}
                       </div>
+                    )}
+                    </>
                     )}
 
                     {/* row actions */}

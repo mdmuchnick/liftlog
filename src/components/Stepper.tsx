@@ -58,7 +58,7 @@ export default function Stepper({
         className="tap"
         aria-label="decrease"
         onClick={() => onChange(clamp(round(value - step)))}
-        style={{ height: 44, width: 40, background: 'transparent', border: 'none', color: 'var(--text)' }}
+        style={{ height: 44, width: 38, flexShrink: 0, background: 'transparent', border: 'none', color: 'var(--text)' }}
       >
         <Minus size={18} style={{ margin: '0 auto' }} />
       </button>
@@ -76,13 +76,15 @@ export default function Stepper({
             if (e.key === 'Escape') setEditing(false)
           }}
           style={{
-            width: width - 88,
+            flex: 1,
+            minWidth: 0,
             textAlign: 'center',
             background: 'transparent',
             border: 'none',
             outline: 'none',
             color: 'var(--text)',
             fontWeight: 700,
+            fontSize: 16,
             fontVariantNumeric: 'tabular-nums',
             padding: 0,
           }}
@@ -98,6 +100,7 @@ export default function Stepper({
           }}
           style={{
             flex: 1,
+            minWidth: 0,
             height: 44,
             background: 'transparent',
             border: 'none',
@@ -105,6 +108,7 @@ export default function Stepper({
             fontWeight: 700,
             fontVariantNumeric: 'tabular-nums',
             fontSize: 16,
+            whiteSpace: 'nowrap',
             cursor: editable ? 'text' : 'default',
           }}
         >
@@ -117,7 +121,7 @@ export default function Stepper({
         className="tap"
         aria-label="increase"
         onClick={() => onChange(clamp(round(value + step)))}
-        style={{ height: 44, width: 40, background: 'transparent', border: 'none', color: 'var(--text)' }}
+        style={{ height: 44, width: 38, flexShrink: 0, background: 'transparent', border: 'none', color: 'var(--text)' }}
       >
         <Plus size={18} style={{ margin: '0 auto' }} />
       </button>

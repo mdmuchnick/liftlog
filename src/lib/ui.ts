@@ -30,3 +30,14 @@ export function formatWeight(weight: number, units: 'lbs' | 'kg'): string {
 export function formatReps(min: number, max: number): string {
   return min === max ? `${min}` : `${min}–${max}`
 }
+
+/** Default hold time (seconds) for a duration-tracked exercise with no target set. */
+export const DEFAULT_DURATION = 30
+
+/** Format seconds as a compact hold time, e.g. 45 → "45s", 90 → "1:30". */
+export function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${m}:${String(s).padStart(2, '0')}`
+}

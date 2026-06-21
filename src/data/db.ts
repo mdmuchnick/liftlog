@@ -60,6 +60,22 @@ export async function ensureSeeded(): Promise<void> {
   )
 }
 
+/** Catalog ids that should be measured by time, not load. */
+const DURATION_EXERCISE_IDS = ['ex_plank']
+
+/**
+ * Idempotent patches for installs seeded before a feature shipped. Runs on every
+ * boot (cheap) so existing local data picks up new fields without a full reset.
+ */
+export async function runMigrations(): Promise<void> {
+  for (const id of DURATION_EXERCISE_IDS) {
+    const ex = await db.exercises.get(id)
+    if (ex && ex.tracking !== 'duration') {
+      await db.exercises.put({ ...ex, tracking: 'duration' })
+    }
+  }
+}
+
 /** Wipe everything and re-seed. Used by Settings → reset and by import. */
 export async function resetAll(): Promise<void> {
   await db.transaction(
