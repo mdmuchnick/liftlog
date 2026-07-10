@@ -15,10 +15,7 @@ export default function Segmented<T extends string>({ options, value, onChange, 
     <div
       style={{
         display: 'flex',
-        background: 'var(--surface-2)',
-        borderRadius: 999,
-        padding: 3,
-        gap: 2,
+        gap: 6,
       }}
     >
       {options.map((o) => {
@@ -32,11 +29,11 @@ export default function Segmented<T extends string>({ options, value, onChange, 
               flex: 1,
               border: 'none',
               borderRadius: 999,
-              padding: size === 'sm' ? '6px 8px' : '9px 10px',
+              padding: size === 'sm' ? '6px 12px' : '9px 16px',
               minHeight: size === 'sm' ? 32 : 40,
-              background: active ? 'var(--accent)' : 'transparent',
-              color: active ? '#fff' : 'var(--muted)',
-              fontWeight: 600,
+              background: active ? 'var(--accent)' : 'var(--surface-2)',
+              color: active ? 'var(--on-accent)' : 'var(--muted)',
+              fontWeight: 700,
               fontSize: size === 'sm' ? 12 : 13,
               whiteSpace: 'nowrap',
             }}

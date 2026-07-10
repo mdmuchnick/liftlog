@@ -14,7 +14,7 @@ export default function TabBar() {
       className="pb-safe"
       style={{
         flexShrink: 0,
-        background: 'var(--surface)',
+        background: 'var(--bg)',
         borderTop: '1px solid var(--border)',
         zIndex: 40,
       }}
@@ -31,17 +31,19 @@ export default function TabBar() {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: 3,
-              padding: '8px 0 6px',
+              gap: 4,
+              padding: '9px 0 6px',
               textDecoration: 'none',
               color: isActive ? 'var(--accent)' : 'var(--muted)',
-              fontSize: 11,
-              fontWeight: 600,
+              fontSize: 10,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
             })}
           >
             {({ isActive }) => (
               <>
-                <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+                <Icon size={22} strokeWidth={isActive ? 2.75 : 2} />
                 {label}
               </>
             )}

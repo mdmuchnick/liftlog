@@ -132,7 +132,7 @@ export interface BodyMetric {
 export interface Settings {
   id: string // singleton 'settings'
   units: 'lbs' | 'kg'
-  theme: 'dark' | 'light' | 'minimal'
+  theme: 'volt' | 'dark' | 'light' | 'minimal'
   defaultRestSeconds: number
   weekStart: 'monday' | 'sunday'
   /** Auto-start the rest timer when a set/exercise is checked complete. */

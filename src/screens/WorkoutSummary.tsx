@@ -1,25 +1,28 @@
-import { useParams } from 'react-router-dom'
-import { Check, Clock, Dumbbell, ListChecks } from 'lucide-react'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Check } from 'lucide-react'
 import Screen from '../components/Screen'
 import ExerciseImage from '../components/ExerciseImage'
-import { useExerciseMap, useSessionForDate, useSettings } from '../data/hooks'
+import { useExerciseMap, useSessionForDate, useSessions, useSettings } from '../data/hooks'
 import { formatDuration, formatLong } from '../lib/date'
-import { sessionVolume, topSet } from '../lib/metrics'
+import { currentStreak, sessionVolume, topSet } from '../lib/metrics'
 import { DEFAULT_DURATION, formatDuration as formatHold, formatReps, formatWeight } from '../lib/ui'
-import type { SetLog } from '../data/types'
+import type { ProgressionSuggestion, SetLog } from '../data/types'
 
 export default function WorkoutSummary() {
   const { date = '' } = useParams()
+  const navigate = useNavigate()
+  const location = useLocation()
   const settings = useSettings()
   const exMap = useExerciseMap()
   const session = useSessionForDate(date)
+  const allSessions = useSessions()
 
   if (!settings || !exMap) return <Screen back>{null}</Screen>
   const units = settings.units
 
   if (!session) {
     return (
-      <Screen title="Summary" back>
+      <Screen back>
         <div className="card" style={{ padding: 20, color: 'var(--muted)' }}>No workout logged for this day.</div>
       </Screen>
     )
@@ -39,17 +42,139 @@ export default function WorkoutSummary() {
   const doneSets = session.setLogs.filter((s) => s.completed).length
   const totalSets = session.setLogs.length
   const volume = Math.round(session.totalVolume ?? sessionVolume(session))
+  const streak = allSessions ? currentStreak(allSessions) : 0
+
+  // PRs: an exercise whose best completed set (weight, or hold for duration exercises)
+  // this session beats every prior session's best for the same exercise.
+  let prCount = 0
+  if (allSessions) {
+    for (const g of groups) {
+      const ex = exMap.get(g.exerciseId)
+      if (!ex) continue
+      const isDuration = ex.tracking === 'duration'
+      const completed = g.logs.filter((l) => l.completed)
+      if (completed.length === 0) continue
+      const currentBest = completed.reduce(
+        (m, l) => Math.max(m, isDuration ? (l.actualDuration ?? l.targetDuration ?? 0) : (l.actualWeight ?? l.targetWeight)),
+        0,
+      )
+      if (currentBest <= 0) continue
+      let prevBest = 0
+      for (const s of allSessions) {
+        if (s.id === session.id || s.date >= session.date) continue
+        for (const l of s.setLogs) {
+          if (!l.completed || l.exerciseId !== g.exerciseId) continue
+          const val = isDuration ? (l.actualDuration ?? l.targetDuration ?? 0) : (l.actualWeight ?? l.targetWeight)
+          if (val > prevBest) prevBest = val
+        }
+      }
+      if (currentBest > prevBest) prCount++
+    }
+  }
+
+  // Optional: caller (Today.tsx, right after finishing a workout) may pass the
+  // freshly computed progression suggestions via navigation state.
+  const suggestions = (location.state as { suggestions?: ProgressionSuggestion[] } | null)?.suggestions ?? null
 
   return (
-    <Screen title={session.routineName} subtitle={formatLong(session.date)} back>
-      {/* Headline stats */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
-        <Stat icon={<Clock size={16} />} label="Time" value={formatDuration(session.durationSeconds ?? 0)} />
-        <Stat icon={<Dumbbell size={16} />} label="Volume" value={`${volume.toLocaleString()} ${units}`} />
-        <Stat icon={<ListChecks size={16} />} label="Sets" value={`${doneSets}/${totalSets}`} />
+    <Screen back>
+      {/* Poster header */}
+      <div style={{ textAlign: 'center', padding: '10px 8px 26px' }}>
+        <div
+          style={{
+            color: 'var(--accent)',
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: '0.16em',
+            textTransform: 'uppercase',
+          }}
+        >
+          {formatLong(session.date)}
+        </div>
+        <h1 className="disp" style={{ fontSize: 48, margin: '8px 0 0', letterSpacing: '0.01em' }}>
+          WORKOUT <span style={{ color: 'var(--accent)' }}>COMPLETE</span>
+        </h1>
+        <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 10 }}>
+          {session.routineName}
+          {streak > 1 ? ` · ${streak} day streak` : ''}
+        </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* Stat tile grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
+        <StatTile label="Duration" value={formatDuration(session.durationSeconds ?? 0)} />
+        <StatTile label="Volume" value={`${volume.toLocaleString()} ${units}`} />
+        <StatTile label="Sets done" value={`${doneSets}/${totalSets}`} />
+        <StatTile label="PRs" value={String(prCount)} tone="effort" />
+      </div>
+
+      {/* Progression suggestions */}
+      {suggestions && suggestions.length > 0 && (
+        <div className="card" style={{ padding: 16, marginBottom: 20 }}>
+          <div
+            style={{
+              color: 'var(--muted)',
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+              marginBottom: 12,
+            }}
+          >
+            Progression for next time
+          </div>
+          <div>
+            {suggestions.map((s, i) => {
+              const up = s.suggestedWeight > s.currentWeight
+              const repsChanged = s.suggestedRepsMax !== s.currentRepsMax
+              const changed = up || repsChanged
+              return (
+                <div
+                  key={s.routineExerciseId}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    padding: '11px 0',
+                    borderTop: i === 0 ? 'none' : '1px solid var(--border)',
+                  }}
+                >
+                  <div style={{ fontWeight: 700, fontSize: 14, minWidth: 0, flex: 1 }}>{s.exerciseName}</div>
+                  {changed ? (
+                    <div
+                      style={{
+                        color: 'var(--accent)',
+                        fontWeight: 700,
+                        fontSize: 13,
+                        whiteSpace: 'nowrap',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
+                      {formatWeight(s.currentWeight, units)} &rarr; {formatWeight(s.suggestedWeight, units)}
+                      {repsChanged ? ` @${formatReps(s.suggestedRepsMin, s.suggestedRepsMax)}` : ''} &uarr;
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        color: 'var(--muted)',
+                        fontSize: 13,
+                        whiteSpace: 'nowrap',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
+                      hold &middot; {formatWeight(s.currentWeight, units)}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Set-by-set breakdown */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 22 }}>
         {groups.map((g) => {
           const ex = exMap.get(g.exerciseId)
           if (!ex) return null
@@ -67,8 +192,19 @@ export default function WorkoutSummary() {
           return (
             <div key={g.rexId} className="card" style={{ padding: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-                <div style={{ width: 44, height: 44, flexShrink: 0 }}>
+                <div style={{ width: 56, height: 56, flexShrink: 0, position: 'relative', borderRadius: 10, overflow: 'hidden' }}>
                   <ExerciseImage images={ex.images} alt={ex.name} variant="thumb" />
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      height: 3,
+                      background: 'var(--accent)',
+                      opacity: 0.65,
+                    }}
+                  />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 15 }}>{ex.name}</div>
@@ -101,7 +237,7 @@ export default function WorkoutSummary() {
                         padding: '7px 10px',
                         borderRadius: 10,
                         background: 'var(--surface-2)',
-                        opacity: l.completed ? 1 : 0.5,
+                        opacity: l.completed ? 0.55 : 1,
                         fontSize: 14,
                       }}
                     >
@@ -124,7 +260,7 @@ export default function WorkoutSummary() {
                           justifyContent: 'center',
                         }}
                       >
-                        {l.completed && <Check size={13} color="#fff" strokeWidth={3} />}
+                        {l.completed && <Check size={13} color="var(--on-accent)" strokeWidth={3} />}
                       </span>
                     </div>
                   )
@@ -140,18 +276,73 @@ export default function WorkoutSummary() {
           )
         })}
       </div>
+
+      {/* Actions */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <button
+          onClick={() => navigate('/')}
+          className="tap"
+          style={{
+            width: '100%',
+            height: 50,
+            borderRadius: 999,
+            border: 'none',
+            background: 'var(--accent)',
+            color: 'var(--on-accent)',
+            fontWeight: 800,
+            fontSize: 14,
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+          }}
+        >
+          Done
+        </button>
+        <button
+          onClick={() => navigate('/progress')}
+          className="tap"
+          style={{
+            width: '100%',
+            height: 44,
+            borderRadius: 999,
+            border: 'none',
+            background: 'transparent',
+            color: 'var(--muted)',
+            fontWeight: 700,
+            fontSize: 13,
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+          }}
+        >
+          View Progress
+        </button>
+      </div>
     </Screen>
   )
 }
 
-function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function StatTile({ label, value, tone }: { label: string; value: string; tone?: 'accent' | 'effort' }) {
   return (
-    <div className="card" style={{ flex: 1, padding: '10px 12px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--muted)', fontSize: 11 }}>
-        {icon}
+    <div className="card" style={{ padding: '14px 14px 12px' }}>
+      <div
+        style={{
+          color: 'var(--muted)',
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: '0.14em',
+          textTransform: 'uppercase',
+        }}
+      >
         {label}
       </div>
-      <div style={{ fontWeight: 800, fontSize: 15, marginTop: 3, fontVariantNumeric: 'tabular-nums' }}>
+      <div
+        className="disp"
+        style={{
+          fontSize: 30,
+          marginTop: 4,
+          color: tone === 'effort' ? 'var(--effort)' : 'var(--accent)',
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
         {value}
       </div>
     </div>

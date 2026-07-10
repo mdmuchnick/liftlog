@@ -446,7 +446,7 @@ export default function ExerciseDetail() {
             borderRadius: 14,
             border: 'none',
             background: 'var(--accent)',
-            color: '#fff',
+            color: 'var(--on-accent)',
             fontWeight: 800,
             fontSize: 16,
             display: 'flex',
@@ -531,7 +531,7 @@ function SetRow({
           justifyContent: 'center',
         }}
       >
-        {log.completed && <Check size={20} color="#fff" strokeWidth={3} />}
+        {log.completed && <Check size={20} color="var(--on-accent)" strokeWidth={3} />}
       </button>
     </div>
   )

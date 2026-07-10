@@ -1,4 +1,4 @@
-import { ArrowRight, TrendingUp } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import type { ProgressionSuggestion } from '../data/types'
 import { formatReps, formatWeight } from '../lib/ui'
 
@@ -42,65 +42,94 @@ export default function ProgressionSummary({ suggestions, units, onClose }: Prop
         }}
       >
         <div style={{ width: 40, height: 4, borderRadius: 999, background: 'var(--border)', margin: '0 auto 16px' }} />
-        <div style={{ textAlign: 'center', marginBottom: 6 }}>
+        <div style={{ textAlign: 'center', marginBottom: 20 }}>
           <div
             style={{
-              width: 56,
-              height: 56,
-              borderRadius: 999,
-              background: 'var(--accent-soft)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 10px',
+              color: 'var(--accent)',
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: '0.16em',
+              textTransform: 'uppercase',
             }}
           >
-            <TrendingUp size={28} color="var(--accent)" />
+            Session logged
           </div>
-          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Workout complete!</h2>
-          <p style={{ color: 'var(--muted)', margin: '6px 0 18px', fontSize: 14 }}>
+          <h2 className="disp" style={{ fontSize: 34, margin: '6px 0 0' }}>
+            Workout <span style={{ color: 'var(--accent)' }}>Complete</span>
+          </h2>
+          <p style={{ color: 'var(--muted)', margin: '8px 0 0', fontSize: 13 }}>
             {changed.length > 0
               ? `${changed.length} target${changed.length > 1 ? 's' : ''} updated for next time.`
               : 'Targets held steady — keep pushing next session.'}
           </p>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
-          {suggestions.map((s) => {
+        <div
+          style={{
+            color: 'var(--muted)',
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            marginBottom: 4,
+          }}
+        >
+          Progression for next time
+        </div>
+        <div className="card" style={{ padding: '0 14px', marginBottom: 18 }}>
+          {suggestions.map((s, i) => {
             const up = s.suggestedWeight > s.currentWeight
             const repsChanged = s.suggestedRepsMax !== s.currentRepsMax
+            const isChanged = up || repsChanged
             return (
               <div
                 key={s.routineExerciseId}
-                className="card"
-                style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12 }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '12px 0',
+                  borderTop: i === 0 ? 'none' : '1px solid var(--border)',
+                }}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 15 }}>{s.exerciseName}</div>
                   <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 2 }}>{s.reason}</div>
                 </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    fontWeight: 700,
-                    fontSize: 13,
-                    fontVariantNumeric: 'tabular-nums',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  <span style={{ color: 'var(--muted)' }}>{formatWeight(s.currentWeight, units)}</span>
-                  <ArrowRight size={14} color={up ? 'var(--success)' : 'var(--muted)'} />
-                  <span style={{ color: up ? 'var(--success)' : 'var(--text)' }}>
-                    {formatWeight(s.suggestedWeight, units)}
-                  </span>
-                  {repsChanged && (
-                    <span style={{ color: 'var(--muted)', marginLeft: 2 }}>
-                      @{formatReps(s.suggestedRepsMin, s.suggestedRepsMax)}
-                    </span>
-                  )}
-                </div>
+                {isChanged ? (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      fontWeight: 700,
+                      fontSize: 13,
+                      color: 'var(--accent)',
+                      fontVariantNumeric: 'tabular-nums',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <span style={{ color: 'var(--muted)' }}>{formatWeight(s.currentWeight, units)}</span>
+                    <ArrowRight size={14} color="var(--accent)" />
+                    <span>{formatWeight(s.suggestedWeight, units)}</span>
+                    {repsChanged && (
+                      <span style={{ color: 'var(--muted)', marginLeft: 2 }}>
+                        @{formatReps(s.suggestedRepsMin, s.suggestedRepsMax)}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      fontSize: 13,
+                      color: 'var(--muted)',
+                      fontVariantNumeric: 'tabular-nums',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    hold &middot; {formatWeight(s.currentWeight, units)}
+                  </div>
+                )}
               </div>
             )
           })}
@@ -112,12 +141,14 @@ export default function ProgressionSummary({ suggestions, units, onClose }: Prop
           style={{
             width: '100%',
             height: 50,
-            borderRadius: 14,
+            borderRadius: 999,
             border: 'none',
             background: 'var(--accent)',
-            color: '#fff',
+            color: 'var(--on-accent)',
             fontWeight: 800,
-            fontSize: 16,
+            fontSize: 14,
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
           }}
         >
           Done

@@ -59,7 +59,7 @@ export default function ExerciseCard({
           minHeight: 30,
         }}
       >
-        {done && <Check size={18} color="#fff" strokeWidth={3} />}
+        {done && <Check size={18} color="var(--on-accent)" strokeWidth={3} />}
       </button>
 
       <button
@@ -78,28 +78,48 @@ export default function ExerciseCard({
           minHeight: 56,
         }}
       >
-        <div style={{ width: 52, height: 52, flexShrink: 0 }}>
+        <div style={{ width: 56, height: 56, flexShrink: 0 }}>
           <ExerciseImage images={exercise.images} alt={exercise.name} variant="thumb" />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-            style={{
-              fontWeight: 700,
-              fontSize: 16,
-              textDecoration: done ? 'line-through' : 'none',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-          >
-            {exercise.name}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+            <span
+              style={{
+                fontWeight: 700,
+                fontSize: 15,
+                textDecoration: done ? 'line-through' : 'none',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                minWidth: 0,
+              }}
+            >
+              {exercise.name}
+            </span>
+            {exercise.equipment && (
+              <span
+                style={{
+                  flexShrink: 0,
+                  padding: '3px 9px',
+                  borderRadius: 999,
+                  background: 'var(--surface-2)',
+                  color: 'var(--muted)',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  textTransform: 'capitalize',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {exercise.equipment}
+              </span>
+            )}
           </div>
-          <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 2 }}>
+          <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 3 }}>
             {sets} × {formatReps(repsMin, repsMax)} ·{' '}
             {exercise.tracking === 'duration'
               ? `${formatDuration(duration ?? DEFAULT_DURATION)} hold`
               : formatWeight(weight, units)}
-            <span style={{ color: 'var(--accent)', marginLeft: 8 }}>
+            <span style={{ color: 'var(--accent)', marginLeft: 8, fontWeight: 700 }}>
               {completedSets}/{sets}
             </span>
           </div>

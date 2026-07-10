@@ -98,10 +98,11 @@ export default function Profile() {
       {/* Appearance */}
       <Section title="Appearance">
         <Row label="Theme">
-          <div style={{ width: 220 }}>
+          <div style={{ width: 260 }}>
             <Segmented
               size="sm"
               options={[
+                { value: 'volt', label: 'Volt' },
                 { value: 'dark', label: 'Dark' },
                 { value: 'light', label: 'Light' },
                 { value: 'minimal', label: 'Minimal' },
@@ -235,7 +236,7 @@ export default function Profile() {
               justifyContent: 'center',
               background: 'var(--accent)',
               border: 'none',
-              color: '#fff',
+              color: 'var(--on-accent)',
               fontWeight: 800,
             }}
           >

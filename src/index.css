@@ -2,13 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'Anton';
+  src: url('/fonts/anton.woff2') format('woff2');
+  font-display: swap;
+  font-weight: 400;
+  font-style: normal;
+}
+
 /* ============================================================
    THEME TOKENS
-   Three presets per PRD §5. Every component reads from these
-   CSS variables, so switching data-theme recolors the app.
+   Presets per PRD §5 (+ Volt, the Ladder-inspired default). Every
+   component reads from these CSS variables, so switching data-theme
+   recolors the app.
    ============================================================ */
 
 :root,
+[data-theme='volt'] {
+  --bg: #050505;
+  --surface: #1a1a1c;
+  --surface-2: #242427;
+  --border: #2e2e33;
+  --text: #f5f5f2;
+  --muted: #98989f;
+  --accent: #e2fb3a;
+  --accent-soft: rgba(226, 251, 58, 0.14);
+  --effort: #a78bfa;
+  --on-accent: #0b0b00;
+  --success: #34d399;
+  --danger: #f87171;
+  color-scheme: dark;
+}
+
 [data-theme='dark'] {
   --bg: #0b0b0f;
   --surface: #16161d;
@@ -18,6 +43,8 @@
   --muted: #8a8a99;
   --accent: #8b5cf6;
   --accent-soft: rgba(139, 92, 246, 0.16);
+  --effort: #8b5cf6;
+  --on-accent: #ffffff;
   --success: #34d399;
   --danger: #f87171;
   color-scheme: dark;
@@ -32,6 +59,8 @@
   --muted: #6b7280;
   --accent: #2563eb;
   --accent-soft: rgba(37, 99, 235, 0.12);
+  --effort: #7c3aed;
+  --on-accent: #ffffff;
   --success: #10b981;
   --danger: #ef4444;
   color-scheme: light;
@@ -46,6 +75,8 @@
   --muted: #7b857b;
   --accent: #16a34a;
   --accent-soft: rgba(22, 163, 74, 0.12);
+  --effort: #7c5cbf;
+  --on-accent: #ffffff;
   --success: #16a34a;
   --danger: #dc2626;
   color-scheme: light;
@@ -116,6 +147,13 @@ button {
   }
   .input-stepper {
     @apply bg-surface-2 border border-border rounded-pill text-text;
+  }
+  .disp {
+    font-family: 'Anton', 'Arial Narrow Bold', sans-serif;
+    text-transform: uppercase;
+    line-height: 0.95;
+    letter-spacing: 0.01em;
+    font-weight: 400;
   }
 }
 

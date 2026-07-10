@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react'
 import {
-  Line,
-  LineChart,
+  Area,
+  AreaChart,
+  CartesianGrid,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts'
-import { Dumbbell, Clock, Activity, BarChart3, ChevronDown, Plus } from 'lucide-react'
+import { Dumbbell, Clock, Activity, BarChart3, ChevronDown, Plus, TrendingUp, TrendingDown } from 'lucide-react'
 import Screen from '../components/Screen'
 import Segmented from '../components/Segmented'
 import Stepper from '../components/Stepper'
@@ -57,6 +58,10 @@ export default function Progress() {
 
   const bodySeries = (bodyMetrics ?? []).map((m) => ({ date: m.date, value: m.weight }))
 
+  const latest = series.length > 0 ? series[series.length - 1] : null
+  const prev = series.length > 1 ? series[series.length - 2] : null
+  const delta = latest && prev ? latest.value - prev.value : null
+
   return (
     <Screen title="Progress" subtitle={`🔥 ${streak}-day streak`}>
       <div style={{ marginBottom: 16 }}>
@@ -71,15 +76,23 @@ export default function Progress() {
         />
       </div>
 
-      {/* Overview cards */}
+      {/* Overview stat tiles */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 24 }}>
         {cards.map(({ label, value, Icon }) => (
           <div key={label} className="card" style={{ padding: 14 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--muted)', fontSize: 12 }}>
-              <Icon size={15} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--muted)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              <Icon size={14} />
               {label}
             </div>
-            <div style={{ fontSize: 24, fontWeight: 800, marginTop: 6, fontVariantNumeric: 'tabular-nums' }}>
+            <div
+              className="disp"
+              style={{
+                fontSize: 26,
+                marginTop: 6,
+                color: label === 'Workouts' ? 'var(--effort)' : 'var(--accent)',
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
               {value}
             </div>
           </div>
@@ -93,20 +106,20 @@ export default function Progress() {
           <EmptyChart text="Log a workout to see your strength curve." />
         ) : (
           <div className="card" style={{ padding: 14 }}>
-            <div style={{ position: 'relative', marginBottom: 12 }}>
+            <div style={{ position: 'relative', marginBottom: 14 }}>
               <select
                 value={activeExerciseId ?? ''}
                 onChange={(e) => setExerciseId(e.target.value)}
                 style={{
                   width: '100%',
-                  height: 44,
-                  borderRadius: 12,
-                  border: '1px solid var(--border)',
+                  height: 40,
+                  borderRadius: 999,
+                  border: 'none',
                   background: 'var(--surface-2)',
                   color: 'var(--text)',
                   fontWeight: 700,
-                  fontSize: 14,
-                  padding: '0 38px 0 14px',
+                  fontSize: 13,
+                  padding: '0 38px 0 16px',
                   appearance: 'none',
                   WebkitAppearance: 'none',
                   cursor: 'pointer',
@@ -119,11 +132,54 @@ export default function Progress() {
                 ))}
               </select>
               <ChevronDown
-                size={18}
+                size={16}
                 color="var(--muted)"
-                style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
+                style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
               />
             </div>
+
+            {latest && (
+              <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div>
+                  <div
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.14em',
+                      color: 'var(--muted)',
+                      marginBottom: 2,
+                    }}
+                  >
+                    Working Weight
+                  </div>
+                  <div className="disp" style={{ fontSize: 34, color: 'var(--accent)' }}>
+                    {latest.value}
+                    <span style={{ fontSize: 15, marginLeft: 4, color: 'var(--muted)', fontFamily: 'inherit', textTransform: 'none', letterSpacing: 0 }}>{units}</span>
+                  </div>
+                </div>
+                {delta !== null && delta !== 0 && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      background: 'var(--accent-soft)',
+                      color: 'var(--accent)',
+                      fontSize: 12,
+                      fontWeight: 800,
+                      borderRadius: 999,
+                      padding: '6px 10px',
+                    }}
+                  >
+                    {delta > 0 ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
+                    {delta > 0 ? '+' : ''}
+                    {delta} {units}
+                  </div>
+                )}
+              </div>
+            )}
+
             <ProgressChart data={series} units={units} suffix={units} />
           </div>
         )}
@@ -141,7 +197,7 @@ export default function Progress() {
         </div>
         <div className="card" style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>Log today's weight</div>
+            <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Log today's weight</div>
             <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{formatShort(todayISO())}</div>
           </div>
           <Stepper value={bw} onChange={setBw} step={1} suffix={units} width={130} />
@@ -156,7 +212,7 @@ export default function Progress() {
               borderRadius: 12,
               border: 'none',
               background: 'var(--accent)',
-              color: '#fff',
+              color: 'var(--on-accent)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -183,15 +239,22 @@ function ProgressChart({
   return (
     <div style={{ height: 200 }}>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={chartData} margin={{ top: 8, right: 12, bottom: 4, left: -16 }}>
+        <AreaChart data={chartData} margin={{ top: 8, right: 12, bottom: 4, left: -16 }}>
+          <defs>
+            <linearGradient id="progressFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.28} />
+              <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid stroke="var(--border)" vertical={false} strokeDasharray="3 4" />
           <XAxis
             dataKey="label"
-            tick={{ fontSize: 11, fill: 'var(--muted)' }}
+            tick={{ fontSize: 10, fill: 'var(--muted)' }}
             axisLine={{ stroke: 'var(--border)' }}
             tickLine={false}
           />
           <YAxis
-            tick={{ fontSize: 11, fill: 'var(--muted)' }}
+            tick={{ fontSize: 10, fill: 'var(--muted)' }}
             axisLine={false}
             tickLine={false}
             width={44}
@@ -211,15 +274,16 @@ function ProgressChart({
               return [`${v} ${suffix}${reps ? ` × ${reps}` : ''}`, 'Top set']
             }}
           />
-          <Line
+          <Area
             type="monotone"
             dataKey="value"
             stroke="var(--accent)"
             strokeWidth={2.5}
-            dot={{ r: 3, fill: 'var(--accent)' }}
+            fill="url(#progressFill)"
+            dot={{ r: 3, fill: 'var(--accent)', strokeWidth: 0 }}
             activeDot={{ r: 5 }}
           />
-        </LineChart>
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   )
@@ -247,9 +311,9 @@ function EmptyChart({ text, inline }: { text: string; inline?: boolean }) {
 
 const sectionTitle: React.CSSProperties = {
   margin: '0 0 12px',
-  fontSize: 13,
+  fontSize: 11,
   fontWeight: 700,
   color: 'var(--muted)',
   textTransform: 'uppercase',
-  letterSpacing: 0.4,
+  letterSpacing: '0.14em',
 }

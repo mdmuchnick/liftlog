@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, Clock, Dumbbell, Moon } from 'lucide-react'
+import { ChevronRight, Clock, Dumbbell, Flame, Moon } from 'lucide-react'
 import Screen from '../components/Screen'
 import ProgressRing from '../components/ProgressRing'
 import ExerciseCard from '../components/ExerciseCard'
+import ExerciseImage from '../components/ExerciseImage'
 import Segmented from '../components/Segmented'
 import ProgressionSummary from '../components/ProgressionSummary'
 import RestTimer from '../components/RestTimer'
+import WeekStrip from '../components/WeekStrip'
+import TodayHero from '../components/TodayHero'
 import {
   useExerciseMap,
   useRoutines,
@@ -24,9 +27,27 @@ import {
   toggleSet,
 } from '../data/repo'
 import { formatDuration, formatLong, todayISO, weekday } from '../lib/date'
-import { sessionVolume } from '../lib/metrics'
-import type { ProgressionSuggestion, Routine, WorkoutSession } from '../data/types'
-import { TYPE_COLORS } from '../lib/ui'
+import { currentStreak, exerciseSeries, sessionVolume } from '../lib/metrics'
+import type { Equipment, ProgressionSuggestion, Routine, WorkoutSession } from '../data/types'
+import { DEFAULT_DURATION, formatReps, formatWeight, TYPE_COLORS } from '../lib/ui'
+
+const EQUIP_LABEL: Record<Equipment, string> = {
+  barbell: 'Barbell',
+  dumbbell: 'Dumbbell',
+  machine: 'Machine',
+  cable: 'Cable',
+  band: 'Band',
+  bodyweight: 'Bodyweight',
+  other: 'Other',
+}
+
+// Approx active work time per weight-tracked set (seconds), used only to size
+// the pre-workout time estimates. Duration-tracked sets use their hold time.
+const WORK_PER_SET = 40
+
+function estMinutes(seconds: number): string {
+  return `${Math.max(1, Math.round(seconds / 60))} min`
+}
 
 export default function Today() {
   const navigate = useNavigate()
@@ -55,6 +76,13 @@ export default function Today() {
 
   const routine = routines?.find((r) => r.id === routineId) ?? null
   const isCompleted = session?.status === 'completed'
+
+  // Days with a completed session (for the week strip) + the current streak.
+  const completedDates = useMemo(
+    () => new Set((allSessions ?? []).filter((s) => s.status === 'completed').map((s) => s.date)),
+    [allSessions],
+  )
+  const streak = useMemo(() => currentStreak(allSessions ?? []), [allSessions])
 
   // Live session timer
   useEffect(() => {
@@ -261,8 +289,177 @@ export default function Today() {
     )
   }
 
-  // ---------- ACTIVE WORKOUT ----------
   const sorted = [...routine.exercises].sort((a, b) => a.order - b.order)
+
+  // ---------- PRE-WORKOUT (no session started yet) ----------
+  if (!session) {
+    const equip = Array.from(
+      new Set(
+        sorted
+          .map((r) => exMap.get(r.exerciseId)?.equipment)
+          .filter((e): e is Equipment => Boolean(e)),
+      ),
+    )
+    const chips = [
+      ...equip.map((e) => EQUIP_LABEL[e]),
+      `${sorted.length} exercise${sorted.length === 1 ? '' : 's'}`,
+      `${totalSets} sets`,
+    ]
+
+    let activeSec = 0
+    let totalSec = 0
+    for (const rex of sorted) {
+      const ex = exMap.get(rex.exerciseId)
+      const work =
+        ex?.tracking === 'duration' ? (rex.targetDuration ?? DEFAULT_DURATION) : WORK_PER_SET
+      activeSec += rex.targetSets * work
+      totalSec += rex.targetSets * (work + rex.restSeconds)
+    }
+
+    return (
+      <Screen>
+        {/* wordmark + streak */}
+        <div
+          className="pt-safe"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 16,
+          }}
+        >
+          <span className="disp" style={{ fontSize: 26, color: 'var(--text)' }}>
+            LiftLog
+          </span>
+          {streak > 0 && (
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: 'var(--accent-soft)',
+                color: 'var(--accent)',
+                borderRadius: 999,
+                padding: '6px 11px',
+                fontSize: 13,
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <Flame size={14} />
+              {streak} day{streak === 1 ? '' : 's'}
+            </span>
+          )}
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <Segmented
+            options={[
+              { value: 'today', label: 'Today' },
+              { value: 'history', label: 'History' },
+            ]}
+            value={tab}
+            onChange={setTab}
+          />
+        </div>
+
+        <div style={{ marginBottom: 18 }}>
+          <WeekStrip today={today} weekStart={settings.weekStart} completedDates={completedDates} />
+        </div>
+
+        <TodayHero
+          kicker={`${formatLong(today)} · Scheduled`}
+          routineName={routine.name}
+          chips={chips}
+          estTotalLabel={estMinutes(totalSec)}
+          activeLabel={estMinutes(activeSec)}
+          onStart={() => {
+            void ensureSession(routine)
+          }}
+        />
+
+        <div
+          className="disp"
+          style={{
+            fontSize: 10,
+            letterSpacing: '0.16em',
+            color: 'var(--muted)',
+            margin: '24px 0 12px',
+          }}
+        >
+          Up first
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {sorted.map((rex, i) => {
+            const ex = exMap.get(rex.exerciseId)
+            if (!ex) return null
+            const series = exerciseSeries(allSessions ?? [], rex.exerciseId)
+            const last = series.length ? series[series.length - 1] : null
+            const target =
+              ex.tracking === 'duration'
+                ? `${formatDuration(rex.targetDuration ?? DEFAULT_DURATION)} hold`
+                : formatWeight(rex.targetWeight, units)
+            return (
+              <button
+                key={rex.id}
+                className="tap card"
+                onClick={() => navigate(`/exercise/${today}/${rex.id}`)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: 12,
+                  width: '100%',
+                  textAlign: 'left',
+                  color: 'var(--text)',
+                  cursor: 'pointer',
+                }}
+              >
+                <div style={{ width: 56, height: 56, flexShrink: 0 }}>
+                  <ExerciseImage images={ex.images} alt={ex.name} variant="thumb" />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontWeight: 700,
+                      fontSize: 14.5,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {ex.name}
+                  </div>
+                  <div
+                    style={{
+                      color: 'var(--muted)',
+                      fontSize: 12,
+                      marginTop: 3,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {rex.targetSets} × {formatReps(rex.targetRepsMin, rex.targetRepsMax)} · {target}
+                    {last ? ` · Last ${last.value}×${last.reps ?? ''}` : ''}
+                  </div>
+                </div>
+                <span
+                  className="disp"
+                  style={{ fontSize: 18, color: 'var(--muted)', flexShrink: 0 }}
+                >
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </Screen>
+    )
+  }
+
+  // ---------- ACTIVE WORKOUT ----------
 
   return (
     <>
@@ -340,7 +537,7 @@ export default function Today() {
                 borderRadius: 14,
                 border: 'none',
                 background: doneSets === 0 ? 'var(--surface-2)' : 'var(--accent)',
-                color: doneSets === 0 ? 'var(--muted)' : '#fff',
+                color: doneSets === 0 ? 'var(--muted)' : 'var(--on-accent)',
                 fontWeight: 800,
                 fontSize: 16,
                 boxShadow: allDone ? '0 6px 20px var(--accent-soft)' : 'none',
@@ -361,7 +558,7 @@ export default function Today() {
                 </div>
               </div>
               <button
-                onClick={() => navigate(`/summary/${today}`)}
+                onClick={() => navigate(`/summary/${today}`, { state: { suggestions } })}
                 className="tap"
                 style={{
                   height: 40,
@@ -369,7 +566,7 @@ export default function Today() {
                   borderRadius: 999,
                   border: 'none',
                   background: 'var(--accent)',
-                  color: '#fff',
+                  color: 'var(--on-accent)',
                   fontWeight: 700,
                   fontSize: 14,
                 }}

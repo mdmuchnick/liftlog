@@ -83,11 +83,27 @@ export default function RestTimer({ defaultSeconds, onClose }: Props) {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              fontSize: 10,
+              color: 'var(--muted)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.16em',
+              fontWeight: 700,
+              marginBottom: 4,
+            }}
+          >
             {done ? 'Rest complete' : 'Rest timer'}
           </div>
-          <div style={{ fontSize: 30, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>
+          <div
+            className="disp"
+            style={{
+              fontSize: 30,
+              fontVariantNumeric: 'tabular-nums',
+              color: done ? 'var(--accent)' : 'var(--text)',
+            }}
+          >
             {formatClock(remaining)}
           </div>
         </div>
@@ -97,11 +113,30 @@ export default function RestTimer({ defaultSeconds, onClose }: Props) {
         <button onClick={() => reset(duration)} className="tap" style={iconBtn}>
           <RotateCcw size={18} />
         </button>
-        <button onClick={onClose} className="tap" style={iconBtn}>
-          <X size={20} />
+        <button
+          onClick={onClose}
+          className="tap"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+            height: 44,
+            minHeight: 44,
+            padding: '0 16px',
+            borderRadius: 999,
+            border: 'none',
+            background: 'var(--accent)',
+            color: 'var(--on-accent)',
+            fontWeight: 800,
+            fontSize: 13,
+            letterSpacing: '0.04em',
+          }}
+        >
+          <X size={16} strokeWidth={3} />
+          Skip
         </button>
       </div>
-      <div style={{ height: 6, background: 'var(--surface-2)', borderRadius: 999, marginTop: 12 }}>
+      <div style={{ height: 5, background: 'var(--surface-2)', borderRadius: 999, marginTop: 12 }}>
         <div
           style={{
             height: '100%',

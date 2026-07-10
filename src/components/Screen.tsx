@@ -59,7 +59,7 @@ export default function Screen({ title, subtitle, right, back, children, noPadBo
             )}
             <div style={{ flex: 1, minWidth: 0 }}>
               {title && (
-                <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, lineHeight: 1.1 }}>{title}</h1>
+                <h1 className="disp" style={{ margin: 0, fontSize: 28 }}>{title}</h1>
               )}
               {subtitle && (
                 <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 2 }}>{subtitle}</div>
