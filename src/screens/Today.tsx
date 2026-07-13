@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, Clock, Dumbbell, Flame, Moon } from 'lucide-react'
+import { ChevronRight, Clock, Dumbbell, Flame, Moon, Plus } from 'lucide-react'
 import Screen from '../components/Screen'
 import ProgressRing from '../components/ProgressRing'
 import ExerciseCard from '../components/ExerciseCard'
 import ExerciseImage from '../components/ExerciseImage'
+import ExercisePicker, { buildRoutineExercise } from '../components/ExercisePicker'
 import Segmented from '../components/Segmented'
 import ProgressionSummary from '../components/ProgressionSummary'
 import RestTimer from '../components/RestTimer'
@@ -12,6 +13,7 @@ import WeekStrip from '../components/WeekStrip'
 import TodayHero from '../components/TodayHero'
 import {
   useExerciseMap,
+  useExercises,
   useRoutines,
   useSchedule,
   useScheduledWorkouts,
@@ -20,15 +22,20 @@ import {
   useSessions,
 } from '../data/hooks'
 import {
+  addExerciseToSession,
   completeSession,
+  createCustomExercise,
   createRoutine,
+  saveRoutine,
   setDayRoutine,
   startOrGetSession,
   toggleSet,
+  updateExercise,
 } from '../data/repo'
+import { fetchExerciseDetails } from '../data/exerciseSearch'
 import { formatDuration, formatLong, todayISO, weekday } from '../lib/date'
 import { currentStreak, exerciseSeries, sessionVolume } from '../lib/metrics'
-import type { Equipment, ProgressionSuggestion, Routine, WorkoutSession } from '../data/types'
+import type { Equipment, Exercise, ProgressionSuggestion, Routine, WorkoutSession } from '../data/types'
 import { DEFAULT_DURATION, formatReps, formatWeight, TYPE_COLORS } from '../lib/ui'
 
 const EQUIP_LABEL: Record<Equipment, string> = {
@@ -57,6 +64,7 @@ export default function Today() {
   const schedule = useSchedule()
   const overrides = useScheduledWorkouts()
   const exMap = useExerciseMap()
+  const exercises = useExercises()
   const session = useSessionForDate(today)
   const allSessions = useSessions()
 
@@ -65,6 +73,7 @@ export default function Today() {
   const [suggestions, setSuggestions] = useState<ProgressionSuggestion[] | null>(null)
   const [summaryOpen, setSummaryOpen] = useState(false)
   const [restSecs, setRestSecs] = useState<number | null>(null)
+  const [picking, setPicking] = useState(false)
 
   // Resolve today's routine: explicit override wins over the weekly schedule.
   const routineId = useMemo(() => {
@@ -111,8 +120,20 @@ export default function Today() {
 
   const toggleAllForExercise = async (routineExerciseId: string, targetSets: number) => {
     if (!routine) return
-    const s = await ensureSession(routine)
-    const logs = s.setLogs.filter((l) => l.routineExerciseId === routineExerciseId)
+    let s = await ensureSession(routine)
+    let logs = s.setLogs.filter((l) => l.routineExerciseId === routineExerciseId)
+    // Exercise added to the routine mid-session has no set logs yet — create them
+    // before toggling so its sets are actually checkable.
+    if (logs.length === 0) {
+      const rex = routine.exercises.find((e) => e.id === routineExerciseId)
+      if (rex) {
+        const updated = await addExerciseToSession(s.id, rex)
+        if (updated) {
+          s = updated
+          logs = s.setLogs.filter((l) => l.routineExerciseId === routineExerciseId)
+        }
+      }
+    }
     const wasAllDone = logs.every((l) => l.completed) && logs.length >= targetSets
     let cur: WorkoutSession | undefined = s
     for (const l of logs) {
@@ -136,10 +157,50 @@ export default function Today() {
   const doneSets = session?.setLogs.filter((s) => s.completed).length ?? 0
   const allDone = totalSets > 0 && doneSets >= totalSets
 
-  const setCountFor = (routineExerciseId: string, fallback: number) =>
-    session
-      ? session.setLogs.filter((s) => s.routineExerciseId === routineExerciseId).length
-      : fallback
+  const setCountFor = (routineExerciseId: string, fallback: number) => {
+    if (!session) return fallback
+    const n = session.setLogs.filter((s) => s.routineExerciseId === routineExerciseId).length
+    // An exercise added mid-session may have no logs yet — show its target count
+    // so the card renders its sets (logs are created on first toggle).
+    return n > 0 ? n : fallback
+  }
+
+  // Add an exercise to the live routine + session mid-workout so its sets are
+  // immediately checkable (mirrors RoutineEditor.addExercise defaults).
+  const addExerciseToActive = async (ex: Exercise) => {
+    if (!routine || !session || !settings) return
+    const newRex = buildRoutineExercise(ex, settings, routine.exercises.length)
+    await saveRoutine({ ...routine, exercises: [...routine.exercises, newRex] })
+    await addExerciseToSession(session.id, newRex)
+    setPicking(false)
+  }
+
+  // Free-typed exercise: create it, add to routine + session, then enrich in the
+  // background (mirrors RoutineEditor.addCustomExercise).
+  const addCustomToActive = async (name: string) => {
+    if (!routine || !session || !settings) return
+    const ex = await createCustomExercise(name)
+    const newRex = buildRoutineExercise(ex, settings, routine.exercises.length)
+    await saveRoutine({ ...routine, exercises: [...routine.exercises, newRex] })
+    await addExerciseToSession(session.id, newRex)
+    setPicking(false)
+    fetchExerciseDetails(name)
+      .then((d) => {
+        if (d) {
+          updateExercise(ex.id, {
+            instructions: d.instructions,
+            images: d.images,
+            primaryMuscle: d.primaryMuscle,
+            secondaryMuscles: d.secondaryMuscles,
+            equipment: d.equipment,
+            category: d.category,
+          })
+        }
+      })
+      .catch(() => {
+        /* offline or no match — exercise still usable, can refresh later */
+      })
+  }
 
   const onComplete = async () => {
     if (!session) return
@@ -515,6 +576,12 @@ export default function Today() {
           })}
         </div>
 
+        {!isCompleted && (
+          <button className="tap" onClick={() => setPicking(true)} style={addExerciseBtn}>
+            <Plus size={20} /> Add exercise
+          </button>
+        )}
+
         {/* Sticky finish bar — stays above the tab bar, scrolls with content */}
         <div
           style={{
@@ -586,6 +653,15 @@ export default function Today() {
         />
       )}
 
+      {picking && exercises && (
+        <ExercisePicker
+          exercises={exercises}
+          onPick={addExerciseToActive}
+          onAddCustom={addCustomToActive}
+          onClose={() => setPicking(false)}
+        />
+      )}
+
       {restSecs != null && (
         <RestTimer defaultSeconds={restSecs} onClose={() => setRestSecs(null)} />
       )}
@@ -614,6 +690,22 @@ function EmptyHint({ icon, text }: { icon: React.ReactNode; text: string }) {
       <p style={{ margin: 0, fontSize: 14 }}>{text}</p>
     </div>
   )
+}
+
+const addExerciseBtn: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 8,
+  width: '100%',
+  height: 52,
+  marginTop: 12,
+  borderRadius: 14,
+  border: '1px dashed var(--border)',
+  background: 'transparent',
+  color: 'var(--accent)',
+  fontWeight: 700,
+  fontSize: 15,
 }
 
 const adhocBtn: React.CSSProperties = {

@@ -5,6 +5,7 @@ import type {
   Exercise,
   ProgressionSuggestion,
   Routine,
+  RoutineExercise,
   ScheduledWorkout,
   SetLog,
   Settings,
@@ -143,6 +144,38 @@ export async function addSet(
     newLog,
     ...session.setLogs.slice(lastIdx + 1),
   ]
+  await db.sessions.put(session)
+  return session
+}
+
+/**
+ * Ensure a session has set logs for the given routine exercise, creating them
+ * if missing (used when an exercise is added to the routine mid-workout).
+ * Idempotent — no-op if the exercise already has logs. Returns the session.
+ */
+export async function addExerciseToSession(
+  sessionId: string,
+  rex: RoutineExercise,
+): Promise<WorkoutSession | undefined> {
+  const session = await db.sessions.get(sessionId)
+  if (!session) return
+  const hasLogs = session.setLogs.some((sl) => sl.routineExerciseId === rex.id)
+  if (hasLogs) return session
+  const newLogs: SetLog[] = []
+  for (let i = 1; i <= rex.targetSets; i++) {
+    newLogs.push({
+      id: uid(),
+      sessionId,
+      exerciseId: rex.exerciseId,
+      routineExerciseId: rex.id,
+      setNumber: i,
+      targetReps: rex.targetRepsMax,
+      targetWeight: rex.targetWeight,
+      targetDuration: rex.targetDuration,
+      completed: false,
+    })
+  }
+  session.setLogs = [...session.setLogs, ...newLogs]
   await db.sessions.put(session)
   return session
 }

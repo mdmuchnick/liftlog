@@ -135,6 +135,15 @@ export async function runMigrations(): Promise<void> {
       await db.exercises.put({ ...ex, tracking: 'duration' })
     }
   }
+
+  // Exercises added after PLAN_V2 shipped — upsert for existing installs.
+  const NEW_EXERCISE_IDS = ['ex_barbell_curl', 'ex_cable_curl']
+  for (const id of NEW_EXERCISE_IDS) {
+    if (!(await db.exercises.get(id))) {
+      const ex = SEED_EXERCISES.find((e) => e.id === id)
+      if (ex) await db.exercises.put(ex)
+    }
+  }
 }
 
 /** Wipe everything and re-seed. Used by Settings → reset and by import. */

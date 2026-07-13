@@ -15,6 +15,7 @@ import {
 } from '../data/hooks'
 import { db } from '../data/db'
 import {
+  addExerciseToSession,
   addSet,
   removeSet,
   setExerciseDuration,
@@ -88,7 +89,14 @@ export default function ExerciseDetail() {
     if (logs.length > 0) return logs
     if (!routine) return []
     const s = await startOrGetSession(date, routine)
-    return s.setLogs.filter((x) => x.routineExerciseId === rexId)
+    let current = s.setLogs.filter((x) => x.routineExerciseId === rexId)
+    // Exercise added to the routine after the session started has no set logs —
+    // create them so its sets are checkable.
+    if (current.length === 0 && rex) {
+      const updated = await addExerciseToSession(s.id, rex)
+      if (updated) current = updated.setLogs.filter((x) => x.routineExerciseId === rexId)
+    }
+    return current
   }
 
   const openRest = () => {
@@ -338,7 +346,7 @@ export default function ExerciseDetail() {
 
               {logs.length === 0 ? (
                 <button
-                  onClick={() => routine && startOrGetSession(date, routine)}
+                  onClick={() => ensureSessionLogs()}
                   className="tap"
                   style={{
                     height: 48,

@@ -100,7 +100,7 @@ export default function ImageLightbox({ images, name, onClose }: Props) {
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 12,
-          padding: '14px 14px 8px',
+          padding: 'calc(env(safe-area-inset-top, 0px) + 14px) 14px 8px',
           flexShrink: 0,
         }}
       >

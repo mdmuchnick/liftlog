@@ -8,12 +8,12 @@ import {
   Copy,
   Plus,
   Trash2,
-  X,
 } from 'lucide-react'
 import Screen from '../components/Screen'
 import Segmented from '../components/Segmented'
 import Stepper from '../components/Stepper'
 import ExerciseImage from '../components/ExerciseImage'
+import ExercisePicker, { buildRoutineExercise } from '../components/ExercisePicker'
 import { useExercises, useRoutine, useSettings } from '../data/hooks'
 import {
   createCustomExercise,
@@ -25,7 +25,6 @@ import {
 } from '../data/repo'
 import { fetchExerciseDetails } from '../data/exerciseSearch'
 import { formatLong, todayISO } from '../lib/date'
-import { uid } from '../data/seed'
 import type {
   Exercise,
   ProgressionType,
@@ -91,26 +90,7 @@ export default function RoutineEditor() {
   }
 
   const addExercise = (ex: Exercise) => {
-    const isDuration = ex.tracking === 'duration'
-    const newRex: RoutineExercise = {
-      id: uid(),
-      exerciseId: ex.id,
-      order: draft.exercises.length,
-      targetSets: 3,
-      targetRepsMin: ex.category === 'compound' ? 6 : 10,
-      targetRepsMax: ex.category === 'compound' ? 8 : 12,
-      targetWeight: 0,
-      ...(isDuration ? { targetDuration: DEFAULT_DURATION } : {}),
-      restSeconds: settings.defaultRestSeconds,
-      progression: {
-        type: isDuration ? 'manual' : ex.category === 'compound' ? 'linear' : 'double',
-        incrementWeight: ex.primaryMuscle === 'quads' || ex.primaryMuscle === 'hamstrings' ? 10 : 5,
-        repRangeMin: ex.category === 'compound' ? 6 : 10,
-        repRangeMax: ex.category === 'compound' ? 8 : 12,
-        deloadPercent: 10,
-        failureThreshold: 2,
-      },
-    }
+    const newRex = buildRoutineExercise(ex, settings, draft.exercises.length)
     persist({ ...draft, exercises: [...draft.exercises, newRex] })
     setPicking(false)
     setExpanded(newRex.id)
@@ -409,134 +389,6 @@ export default function RoutineEditor() {
         />
       )}
     </>
-  )
-}
-
-function ExercisePicker({
-  exercises,
-  onPick,
-  onAddCustom,
-  onClose,
-}: {
-  exercises: Exercise[]
-  onPick: (e: Exercise) => void
-  onAddCustom: (name: string) => void
-  onClose: () => void
-}) {
-  const [q, setQ] = useState('')
-  const query = q.trim()
-  const filtered = exercises
-    .filter((e) => e.name.toLowerCase().includes(q.toLowerCase()) || e.primaryMuscle.includes(q.toLowerCase()))
-    .sort((a, b) => a.name.localeCompare(b.name))
-  const exactExists = exercises.some((e) => e.name.toLowerCase() === query.toLowerCase())
-  return (
-    <div
-      onClick={onClose}
-      style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="pb-safe"
-        style={{
-          width: '100%',
-          maxWidth: 600,
-          background: 'var(--surface)',
-          borderTopLeftRadius: 22,
-          borderTopRightRadius: 22,
-          padding: 16,
-          maxHeight: '80vh',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Add exercise</h2>
-          <button onClick={onClose} className="tap" style={iconBtn} aria-label="close"><X size={20} /></button>
-        </div>
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search exercises…"
-          style={{ ...textInput, marginBottom: 12 }}
-          autoFocus
-        />
-        <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {filtered.map((ex) => (
-            <button
-              key={ex.id}
-              className="tap"
-              onClick={() => onPick(ex)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: 10,
-                borderRadius: 12,
-                border: '1px solid var(--border)',
-                background: 'var(--surface-2)',
-                color: 'var(--text)',
-                textAlign: 'left',
-              }}
-            >
-              <div style={{ width: 40, height: 40, flexShrink: 0 }}>
-                <ExerciseImage images={ex.images} alt={ex.name} variant="thumb" />
-              </div>
-              <div>
-                <div style={{ fontWeight: 700 }}>{ex.name}</div>
-                <div style={{ color: 'var(--muted)', fontSize: 12, textTransform: 'capitalize' }}>
-                  {ex.primaryMuscle} · {ex.equipment}
-                </div>
-              </div>
-            </button>
-          ))}
-          {filtered.length === 0 && !query && (
-            <div style={{ padding: 20, textAlign: 'center', color: 'var(--muted)' }}>No matches.</div>
-          )}
-
-          {/* Add a typed exercise that isn't in the library yet */}
-          {query.length > 1 && !exactExists && (
-            <button
-              className="tap"
-              onClick={() => onAddCustom(query)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: 12,
-                borderRadius: 12,
-                border: '1px dashed var(--accent)',
-                background: 'var(--accent-soft)',
-                color: 'var(--accent)',
-                textAlign: 'left',
-              }}
-            >
-              <div
-                style={{
-                  width: 40,
-                  height: 40,
-                  flexShrink: 0,
-                  borderRadius: 10,
-                  background: 'var(--surface)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 22,
-                  fontWeight: 800,
-                }}
-              >
-                +
-              </div>
-              <div>
-                <div style={{ fontWeight: 800 }}>Add “{query}”</div>
-                <div style={{ color: 'var(--muted)', fontSize: 12 }}>
-                  Creates a custom exercise &amp; fetches instructions + images
-                </div>
-              </div>
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
   )
 }
 
